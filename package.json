@@ -1,0 +1,27 @@
+{
+  "name": "teachervibe",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "A local-first repository viewer and annotator for people directing coding agents (working name).",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:browser": "playwright test"
+  },
+  "dependencies": {
+    "prismjs": "^1.30.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^26.6.2",
+    "@types/prismjs": "^1.26.5",
+    "typescript": "~5.9.2",
+    "vite": "^7.1.0",
+    "vitest": "^3.2.4"
+  }
+}
