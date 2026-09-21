@@ -79,7 +79,7 @@ working origin; GitHub is the canonical public mirror:
 ```sh
 git clone <forgejo-ssh-url> teachervibe
 cd teachervibe
-git remote add github git@github.com:Aventurine-git/teachervibe.git
+git remote add github git@github.com:AventurineDream/teachervibe.git
 # day to day: push to origin (Forgejo)
 git push origin main
 # publish: mirror to GitHub
