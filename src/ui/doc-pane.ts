@@ -73,6 +73,9 @@ export class ReaderPane extends HTMLElement {
         this.dragAnchor = line;
       }
       e.preventDefault();
+      // Preventing mousedown's default stops the pane from receiving focus.
+      // Keep the keyboard shortcut available after a mouse selection.
+      this.focus({ preventScroll: true });
     });
     this.addEventListener('mouseover', (e) => {
       // Require a held button: re-renders replace the DOM under a stationary
@@ -171,7 +174,12 @@ export class ReaderPane extends HTMLElement {
   }
 
   private scrollToLine(line: number): void {
-    this.querySelector(`[data-line="${line}"]`)?.scrollIntoView({ block: 'center' });
+    const scroller = this.querySelector<HTMLElement>('.code-scroll');
+    const row = this.querySelector<HTMLElement>(`[data-line="${line}"]`);
+    if (!scroller || !row) return;
+    // scrollIntoView also scrolls the page and other scrollable ancestors.
+    // Only the code pane should move when explicitly navigating to a line.
+    scroller.scrollTop = row.offsetTop - scroller.offsetTop - (scroller.clientHeight - row.offsetHeight) / 2;
   }
 
   private annotationsForFile(state: AppState): Annotation[] {
@@ -198,7 +206,15 @@ export class ReaderPane extends HTMLElement {
     const active = document.activeElement as HTMLInputElement | null;
     const searchFocused = active?.matches?.('[data-search]') && this.contains(active);
     const caret = searchFocused ? active!.selectionStart : null;
+    const oldScroller = this.querySelector<HTMLElement>('.code-scroll');
+    const oldScrollTop = oldScroller?.scrollTop ?? 0;
+    const oldScrollLeft = oldScroller?.scrollLeft ?? 0;
     this.renderInner(state);
+    const scroller = this.querySelector<HTMLElement>('.code-scroll');
+    if (scroller) {
+      scroller.scrollTop = oldScrollTop;
+      scroller.scrollLeft = oldScrollLeft;
+    }
     if (searchFocused) {
       const input = this.querySelector<HTMLInputElement>('[data-search]');
       if (input) {
@@ -260,8 +276,6 @@ export class ReaderPane extends HTMLElement {
       </div>` : `<div class="selection-bar" hidden></div>`}
       <div class="code-scroll ${this.wrap ? 'wrap' : ''}">${body}</div>
     `;
-    const sel = state.selection;
-    if (sel) this.scrollToLine(sel.start);
   }
 
   private renderCode(state: AppState, text: string): string {

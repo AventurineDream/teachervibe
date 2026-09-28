@@ -26,7 +26,8 @@ export const FILES: Record<string, string> = {
     ''
   ].join('\n'),
   'src/util.ts': ['export const VERSION = 1;', ''].join('\n'),
-  'styles.css': ['body { margin: 0; }', ''].join('\n')
+  'styles.css': ['body { margin: 0; }', ''].join('\n'),
+  'long.md': Array.from({ length: 180 }, (_, i) => `Line ${i + 1}: reading stays put.`).join('\n')
 };
 
 const TREE = {
@@ -36,6 +37,7 @@ const TREE = {
     { path: 'src/app.ts', type: 'blob', size: FILES['src/app.ts']!.length, sha: '2' },
     { path: 'src/util.ts', type: 'blob', size: FILES['src/util.ts']!.length, sha: '3' },
     { path: 'styles.css', type: 'blob', size: FILES['styles.css']!.length, sha: '4' },
+    { path: 'long.md', type: 'blob', size: FILES['long.md']!.length, sha: '7' },
     { path: 'package-lock.json', type: 'blob', size: 9000, sha: '5' },
     { path: 'assets', type: 'tree' },
     { path: 'assets/logo.png', type: 'blob', size: 4321, sha: '6' }

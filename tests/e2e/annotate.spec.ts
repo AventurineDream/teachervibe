@@ -79,3 +79,43 @@ test('keyboard navigation: j/k move, shift extends, a annotates', async ({ page 
   await page.locator('reader-pane').press('a');
   await expect(page.locator('.card.draft')).toBeVisible();
 });
+
+
+test('selecting with the mouse leaves a available to start a draft', async ({ page }) => {
+  await page.locator('[data-line="5"] .gutter').click();
+  await page.locator('[data-line="6"] .gutter').click({ modifiers: ['Shift'] });
+  await expect(page.locator('.selection-bar')).toContainText('L5-L6 selected');
+  await expect(page.locator('reader-pane')).toBeFocused();
+  await page.keyboard.press('a');
+  await expect(page.locator('.card.draft')).toBeVisible();
+});
+
+test('clicking a line or marker does not jump the reading position', async ({ page }) => {
+  await openFixtureFile(page, 'long.md');
+  const scroll = page.locator('.code-scroll');
+  await scroll.evaluate((el) => { el.scrollTop = 1300; });
+  const before = await scroll.evaluate((el) => el.scrollTop);
+  await page.locator('[data-line="70"] .gutter').click();
+  expect(await scroll.evaluate((el) => el.scrollTop)).toBeCloseTo(before, 0);
+  await page.keyboard.press('a');
+  await page.locator('[data-draft="body"]').fill('Check this line');
+  await page.locator('[data-ins="save-draft"]').click();
+  await page.locator('[data-line="70"] .marker').click();
+  expect(await scroll.evaluate((el) => el.scrollTop)).toBeCloseTo(before, 0);
+});
+
+test('review tray remains pinned while reading a long file', async ({ page }) => {
+  await openFixtureFile(page, 'long.md');
+  const tray = page.locator('reader-tray');
+  if ((page.viewportSize()?.width ?? 1280) < 821) {
+    await page.locator('[data-action="drawer-tray"]').click();
+  }
+  const initial = await tray.boundingBox();
+  const scroll = page.locator('.code-scroll');
+  await scroll.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+  const after = await tray.boundingBox();
+  expect(initial).not.toBeNull();
+  expect(after).not.toBeNull();
+  expect(after!.y).toBeCloseTo(initial!.y, 0);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(900);
+});
