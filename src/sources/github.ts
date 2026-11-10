@@ -22,6 +22,7 @@ import {
 const API = 'https://api.github.com';
 const MAX_TEXT_BYTES = 1_000_000;
 
+/** Parsed switcher input: the source plus the ref a pasted /tree/<ref> URL pins. */
 export interface GitHubSpec extends GitHubSource {
   /** Optional branch/tag/SHA from a pasted /tree/<ref> URL. */
   ref?: string;
@@ -96,6 +97,25 @@ async function apiJson(
   );
 }
 
+/**
+ * Adapter for github.com over the unauthenticated REST API.
+ *
+ * open() makes three requests (two for a full 40-hex-digit SHA): repository info,
+ * branch head, recursive tree. Other refs use the branch endpoint, not tag or
+ * abbreviated-SHA resolution. The snapshot's defaultBranch is always the repository
+ * default, even when `ref` pins another branch; submodules are dropped, and the
+ * host's `truncated` flag is preserved without fetching more tree entries.
+ *
+ * fetchFile() makes one raw-content request at the pinned commit. Unlike open(), it
+ * reports a 401 or a non-rate-limit 403 as `network`, not `inaccessible`.
+ * open() reports 404 as `not-found`, exhausted-rate-limit 403 as `rate-limited`,
+ * other 401/403 as `inaccessible`, and other HTTP or request failures as `network`.
+ * Native response-body and malformed-payload errors are not wrapped.
+ *
+ * @param fetchFn - fetch implementation; unit tests inject a fake. Defaults to the
+ *   global fetch.
+ * @returns A lazy adapter; construction performs no network requests.
+ */
 export function createGitHubAdapter(
   fetchFn: FetchFn = fetch
 ): SourceAdapter<GitHubSource> {

@@ -34,11 +34,18 @@ export type FetchFileResult =
   | { kind: 'binary' }
   | { kind: 'unsupported'; reason: string };
 
+/**
+ * One repository host behind the snapshot contract, implemented by
+ * createGitHubAdapter(), createForgejoAdapter() and createLocalAdapter(). Request and
+ * lookup failures use SourceError; native decoding and local file-read errors may
+ * propagate unchanged.
+ */
 export interface SourceAdapter<S extends RepositorySource = RepositorySource> {
   readonly kind: SourceKind;
   /**
-   * Resolve the source to a pinned snapshot: default branch -> exact commit SHA,
-   * plus the full file tree. Local sources resolve to commit = null.
+   * Resolve the default branch or supplied branch/full SHA to a pinned snapshot.
+   * Trees may be truncated by the host; local snapshots have commit = null and
+   * omit skipped directories.
    */
   open(source: S, ref?: string): Promise<RepositorySnapshot>;
   /** Load one file's content on demand. Binary and oversized files are explicit states, not errors. */
@@ -46,7 +53,7 @@ export interface SourceAdapter<S extends RepositorySource = RepositorySource> {
     snapshot: RepositorySnapshot,
     record: FileRecord
   ): Promise<FetchFileResult>;
-  /** Deep link to this file/range on the host's own web UI, when one exists. */
+  /** Host deep link with an optional 1-based inclusive line range; null for local folders. */
   webUrl(
     snapshot: RepositorySnapshot,
     path?: string,

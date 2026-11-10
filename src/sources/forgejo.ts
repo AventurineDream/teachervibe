@@ -3,9 +3,8 @@
  * GitHub adapter. Token-free: works against public repositories on any reachable
  * instance, including LAN-only servers when the browser is on the same network.
  *
- * NOTE: verified only against the API contract and unit fixtures so far; the
- * reference instance (http://10.0.0.108:3000) is LAN-only and unreachable from
- * the build environment. First real run against a live Forgejo is a QA task.
+ * Used by App for public repository reads; there is no authenticated fallback.
+ * Cross-origin access depends on the instance allowing the app's origin.
  */
 
 import {
@@ -92,6 +91,27 @@ async function apiJson(
   );
 }
 
+/**
+ * Adapter for Forgejo and other Gitea-compatible hosts over the unauthenticated
+ * /api/v1 REST API. Requests go to each source's own `baseUrl`, so one adapter serves
+ * every instance. When the app is served from another origin, the instance must allow
+ * it through CORS; a blocked request surfaces as `network`.
+ *
+ * open() makes three requests (two for a full 40-hex-digit SHA). Other refs use the
+ * branch endpoint, not tag or abbreviated-SHA resolution. defaultBranch stays the
+ * repository default, and only blob and tree entries are kept. The tree comes from
+ * one request; `truncated` is the host's flag, with no pagination or retry.
+ *
+ * fetchFile() decodes the base64 `contents` response as UTF-8 and returns
+ * `unsupported` when the host sends no base64 content. Errors map as in open().
+ * HTTP 404 is `not-found`, 401/403 `inaccessible`, 429 `rate-limited`; other HTTP
+ * failures and failed requests are `network`. Invalid host payloads can reject
+ * with native JSON or decoding errors instead of SourceError.
+ *
+ * @param fetchFn - fetch implementation; unit tests inject a fake. Defaults to the
+ *   global fetch.
+ * @returns A lazy adapter; construction performs no network requests.
+ */
 export function createForgejoAdapter(
   fetchFn: FetchFn = fetch
 ): SourceAdapter<ForgejoSource> {

@@ -1,10 +1,10 @@
 /**
  * Versioned, deterministic serialization for annotations and review packets.
  *
- * Determinism (invariant 3): exports contain no wall-clock fields and object keys
- * are emitted in sorted order, so identical stored state produces identical bytes.
- * The caller controls annotation order; `exportAnnotations` sorts for stable backups,
- * while `buildReviewPacket` preserves the review tray's human-chosen order.
+ * Determinism (invariant 3): exports never generate wall-clock fields, and object
+ * keys are emitted in sorted order. Backups retain stored annotation timestamps;
+ * review packets omit them. The caller controls annotation order:
+ * `exportAnnotations` sorts backups; `buildReviewPacket` keeps review-tray order.
  */
 
 import {
@@ -58,9 +58,21 @@ export function exportAnnotations(annotations: Annotation[]): string {
   return stableStringify(file);
 }
 
+/**
+ * Why an annotation backup was rejected. Thrown by importAnnotations(), which checks
+ * the whole file before returning anything, so a rejected backup stores nothing.
+ * Messages are human-readable; annotation-level failures use 1-based entry numbers.
+ */
 export class ImportError extends Error {}
 
-/** Parse and validate an annotation export. Unknown schema versions are rejected loudly. */
+/**
+ * Parse and validate an annotation export. Unknown schema versions are rejected loudly.
+ * Returned annotations keep only the known top-level fields (the anchor object is kept
+ * as given once checked), carry the current schemaVersion, and have '' for missing
+ * timestamps. Pure: storing them is the caller's job.
+ * @param json - Contents of an exportAnnotations() backup; no storage is mutated.
+ * @throws {ImportError} for the first problem found; nothing is returned partially.
+ */
 export function importAnnotations(json: string): Annotation[] {
   let parsed: unknown;
   try {

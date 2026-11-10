@@ -1,6 +1,8 @@
 /**
  * <reader-nav> - left rail with three switchable views: Files, Outline, Trail.
  * Generated, vendored, and binary areas render muted; the tree is read-only.
+ * connect() subscribes to App.store; file and range changes go through App actions,
+ * while view-tab and folder-expansion state stay local to the element.
  */
 
 import type { App } from '../store/actions.js';
@@ -93,12 +95,23 @@ export function outlineFor(path: string, text: string): OutlineItem[] {
   return items;
 }
 
+/**
+ * The `<reader-nav>` rail. The active tab and collapsed folders are element state, not
+ * in the Store, so they reset on reload. Choosing a file, outline item or trail entry
+ * also closes the drawer.
+ */
 export class ReaderNav extends HTMLElement {
   private app: App | null = null;
   private tab: Tab = 'files';
   private collapsed = new Set<string>();
   private unsubscribe: (() => void) | null = null;
 
+  /**
+   * Binds the rail to `app`: renders on every store change (nothing is drawn before
+   * the first one) and routes clicks to App.openFile() and App.selectRange(). Call
+   * once: the click listener is never removed.
+   * @param app - Page controller supplying snapshots, trail entries and navigation.
+   */
   connect(app: App): void {
     this.app = app;
     this.unsubscribe?.();
@@ -231,6 +244,7 @@ export class ReaderNav extends HTMLElement {
   }
 }
 
+/** Registers `<reader-nav>`. Call once per page: customElements.define() throws on a repeat. */
 export function defineNav(): void {
   customElements.define('reader-nav', ReaderNav);
 }

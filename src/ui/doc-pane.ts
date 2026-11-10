@@ -2,6 +2,8 @@
  * <reader-pane> - the reading surface. Read-only code document: Prism token
  * color, line numbers, line-range selection for quoting/annotation, margin
  * markers, in-file search, deep links. Selection never edits.
+ * connect() consumes App.store; file loads and persisted annotation changes go
+ * through App actions; UI rendering never writes repository files.
  */
 
 import Prism from 'prismjs';
@@ -44,6 +46,12 @@ const TYPE_GLYPHS: Record<string, string> = {
   concern: '!',
 };
 
+/**
+ * The `<reader-pane>` reading surface. Selection is always whole lines: click,
+ * shift-click or drag in the code, or j/k and Up/Down (Shift extends). `a` annotates
+ * the selection, `/` focuses search, Escape clears. Margin markers sit where anchors
+ * resolve in the current text; `moved` anchors get none. Line wrap is element state.
+ */
 export class ReaderPane extends HTMLElement {
   private app: App | null = null;
   private unsubscribe: (() => void) | null = null;
@@ -52,6 +60,13 @@ export class ReaderPane extends HTMLElement {
   private resolutions = new Map<string, AnchorResolution>();
   private resolutionsFor = '';
 
+  /**
+   * Binds the pane to `app`: renders on every store change (nothing is drawn before
+   * the first one), makes the element focusable for its shortcuts, and adds pointer
+   * and key listeners, including a window mouseup that ends drags released outside
+   * the pane. Call once: listeners are never removed.
+   * @param app - Page controller supplying the open text, selection and annotations.
+   */
   connect(app: App): void {
     this.app = app;
     this.unsubscribe?.();
@@ -378,6 +393,7 @@ function hostUrl(app: App, state: AppState, path: string): string | null {
   return null;
 }
 
+/** Registers `<reader-pane>`. Call once per page: customElements.define() throws on a repeat. */
 export function definePane(): void {
   customElements.define('reader-pane', ReaderPane);
 }

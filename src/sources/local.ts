@@ -4,8 +4,8 @@
  *
  * Commit pinning invariant: a local folder has no durable revision, so the
  * snapshot's commit is null and every anchor created here is best-effort.
- * The directory handle itself cannot survive a browser restart; a reopened
- * session asks for the folder again.
+ * App keeps the directory handle only in memory; it is not persisted for reloads.
+ * Restoring a local link therefore requires the user to pick the folder again.
  */
 
 import {
@@ -32,6 +32,10 @@ const SKIPPED_DIRS = new Set([
   'target',
 ]);
 
+/**
+ * True when the browser has `showDirectoryPicker` (File System Access API). Without
+ * it, pickLocalFolder() throws `unsupported`.
+ */
 export function localFoldersSupported(): boolean {
   return (
     typeof (globalThis as { showDirectoryPicker?: unknown })
@@ -39,6 +43,24 @@ export function localFoldersSupported(): boolean {
   );
 }
 
+/**
+ * Adapter bound to one picked folder: `handle` supplies the content, while the
+ * `source` passed to open() only supplies the snapshot's identity.
+ *
+ * - open() walks the whole folder, reading every file's size, and skips SKIPPED_DIRS
+ *   at any depth, so they never appear in the tree (git sources list such paths and
+ *   mark them generated). Any unreadable entry throws SourceError `inaccessible`.
+ * - fetchFile() reads the file from disk when called, so it shows edits made after
+ *   open(); files added later need another open(). A path the last open() did not
+ *   list throws `not-found`; errors reading the file itself propagate unwrapped.
+ * - webUrl() is always null. pickAndOpen() shows no picker: it opens `handle` under
+ *   its own name.
+ * - Binary paths and files over 1,000,000 reported bytes return non-text states
+ *   without reading their content. The size comes from the most recent open().
+ *
+ * @param handle - folder from pickLocalFolder(); every read goes through it.
+ * @returns A lazy adapter; construction does not prompt or read the folder.
+ */
 export function createLocalAdapter(
   handle: FileSystemDirectoryHandle
 ): SourceAdapter<LocalSource> & { pickAndOpen(): Promise<RepositorySnapshot> } {
@@ -134,7 +156,12 @@ export function createLocalAdapter(
   return adapter;
 }
 
-/** Prompt for a directory. Resolves to null when the user cancels. */
+/**
+ * Prompt for a directory. Resolves to null when the user cancels.
+ * @throws {SourceError} `unsupported` without the File System Access API, or
+ *   `inaccessible` when the picker fails for another reason (for example, when it is
+ *   not called from a user gesture).
+ */
 export async function pickLocalFolder(): Promise<FileSystemDirectoryHandle | null> {
   if (!localFoldersSupported()) {
     throw new SourceError(

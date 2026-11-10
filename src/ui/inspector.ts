@@ -2,6 +2,8 @@
  * <reader-inspector> - write and manage the selected annotation, browse the
  * annotations on the open file, and see the full anchor identity for each.
  * Also owns type/status filters and the moved/stale-anchor states.
+ * connect() consumes App.store and delegates edits to App's IndexedDB-backed actions;
+ * rendering avoids replacing focused form fields.
  */
 
 import {
@@ -14,11 +16,23 @@ import type { AppState } from '../store/state.js';
 import { escapeHtml, renderUnlessFocused, copyText, shortSha } from './dom.js';
 import { buildHash } from './router.js';
 
+/**
+ * The `<reader-inspector>` panel. Edits persist as they happen: type and status on
+ * change, the body when its textarea loses focus; delete is immediate, without
+ * confirmation. State chips compare the anchor's commit with the viewed one (`stale
+ * revision`) and re-resolve it against the open text (`relocated`, `moved`).
+ */
 export class ReaderInspector extends HTMLElement {
   private app: App | null = null;
   private unsubscribe: (() => void) | null = null;
   private resolutions = new Map<string, string>(); // annotation id -> human state label
 
+  /**
+   * Binds the inspector to `app`: renders on every store change (nothing is drawn
+   * before the first one) and routes its buttons and fields to App actions. Call
+   * once: listeners are never removed.
+   * @param app - Page controller supplying annotation state and persistence actions.
+   */
   connect(app: App): void {
     this.app = app;
     this.unsubscribe?.();
@@ -220,6 +234,7 @@ export class ReaderInspector extends HTMLElement {
   }
 }
 
+/** Registers `<reader-inspector>`. Call once per page: customElements.define() throws on a repeat. */
 export function defineInspector(): void {
   customElements.define('reader-inspector', ReaderInspector);
 }

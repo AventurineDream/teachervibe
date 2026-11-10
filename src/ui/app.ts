@@ -2,16 +2,29 @@
  * <reader-app> - shell: header with the repository switcher, three regions
  * (nav rail, document pane, inspector), review tray, status and error surfaces.
  * Regions are separate custom elements; the shell owns layout and header actions.
+ * connect() subscribes to App.store and binds actions; updates mutate this element's
+ * DOM, while repository loading and annotation persistence remain App's responsibility.
  */
 
 import type { App } from '../store/actions.js';
 import type { AppState } from '../store/state.js';
 import { escapeHtml, renderUnlessFocused, download, shortSha } from './dom.js';
 
+/**
+ * The `<reader-app>` shell. Inert until connect(): main.ts connects the page's App,
+ * and the shell passes it on to the four region elements it renders.
+ */
 export class ReaderApp extends HTMLElement {
   private app: App | null = null;
   private unsubscribe: (() => void) | null = null;
 
+  /**
+   * Renders the shell, wires the header to `app`, connects the regions, and re-renders
+   * on every store change. Call once: listeners added here are never removed, so a
+   * second call would handle each click twice (only the store subscription is
+   * replaced).
+   * @param app - Page controller shared with the region elements.
+   */
   connect(app: App): void {
     this.app = app;
     this.unsubscribe?.();
@@ -58,6 +71,8 @@ export class ReaderApp extends HTMLElement {
         this.app.setDrawer(
           this.app.store.get().drawer === 'tray' ? null : 'tray'
         );
+      // NOTE: nothing in src/ui renders an `export-backup` or `import-backup`
+      // control, so these two actions cannot currently be triggered from the UI.
       if (action === 'export-backup') void this.exportBackup();
       if (action === 'import-backup') this.pickImportFile();
     });
@@ -153,6 +168,7 @@ function errorHint(kind: string): string {
   }
 }
 
+/** Registers `<reader-app>`. Call once per page: customElements.define() throws on a repeat. */
 export function defineApp(): void {
   customElements.define('reader-app', ReaderApp);
 }
