@@ -14,9 +14,11 @@ import type {
   SourceKind,
 } from '../contracts/schema.js';
 
+/** Why a source failed; each value maps to a distinct UI state. */
 export type SourceErrorKind =
   'not-found' | 'inaccessible' | 'rate-limited' | 'unsupported' | 'network';
 
+/** Error carrying a SourceErrorKind so callers can branch without parsing messages. */
 export class SourceError extends Error {
   readonly kind: SourceErrorKind;
   constructor(kind: SourceErrorKind, message: string) {
@@ -26,6 +28,7 @@ export class SourceError extends Error {
   }
 }
 
+/** `text` has content; `binary` is a deliberate non-error state; `unsupported` explains why a file is not shown (for example too large). */
 export type FetchFileResult =
   | { kind: 'text'; text: string }
   | { kind: 'binary' }

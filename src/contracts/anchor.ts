@@ -11,12 +11,15 @@
 
 import type { Anchor, TextPosition } from './schema.js';
 
+/** Number of whole lines stored before and after a quote as its context windows. */
 export const CONTEXT_LINES = 2;
 
+/** Splits on `\n` only; a trailing newline yields a final empty line, which ranges may address. */
 export function linesOf(text: string): string[] {
   return text.split('\n');
 }
 
+/** Lowercase hex SHA-256 of the UTF-8 text (Web Crypto, so async). */
 export async function sha256Hex(text: string): Promise<string> {
   const digest = await crypto.subtle.digest(
     'SHA-256',
@@ -75,6 +78,13 @@ export function lineRange(
   };
 }
 
+/**
+ * Builds an anchor for the range [start, end) of `fileText` and returns it with the quoted text.
+ * The anchor stores the SHA-256 of the quote plus up to CONTEXT_LINES lines on each side; the quote
+ * itself is kept by the caller (the Annotation), not in the anchor.
+ * @param input.commit - pinned commit SHA, or null for local folders.
+ * @throws {RangeError} when the range is outside the file.
+ */
 export async function createAnchor(input: {
   repoId: string;
   commit: string | null;
@@ -109,6 +119,7 @@ export async function createAnchor(input: {
   return { anchor, quote };
 }
 
+/** Outcome of resolveAnchor(): `exact` and `relocated` carry the range to show; `moved` carries a human-readable reason and no range. */
 export type AnchorResolution =
   | { state: 'exact'; start: TextPosition; end: TextPosition }
   | { state: 'relocated'; start: TextPosition; end: TextPosition }
@@ -132,6 +143,7 @@ function findCandidates(lines: string[], quoteLines: string[]): number[] {
   return candidates;
 }
 
+/** 0-2: one point for each stored context window that still equals the lines around the candidate. */
 function contextScore(
   lines: string[],
   firstLineIdx: number,
@@ -154,6 +166,12 @@ function contextScore(
   return score;
 }
 
+/**
+ * Re-resolves `anchor` against `fileText` (see the contract in the file header). Matching is
+ * line-aligned: a relocated range always spans whole lines. It never returns a range unless the
+ * quoted text is found, and it returns `moved` rather than choosing between equally good candidates.
+ * @param quote - the text originally selected (stored on the Annotation).
+ */
 export async function resolveAnchor(
   anchor: Anchor,
   quote: string,

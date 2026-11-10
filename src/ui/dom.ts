@@ -1,5 +1,6 @@
 /** Small DOM helpers shared by components. */
 
+/** Escapes `& < > " '` for safe interpolation into HTML text and attribute values. */
 export function escapeHtml(text: string): string {
   return text
     .replaceAll('&', '&amp;')
@@ -28,6 +29,7 @@ export function renderUnlessFocused(el: HTMLElement, html: string): void {
   el.innerHTML = html;
 }
 
+/** Downloads `content` as a file via a temporary object URL (revoked after 5 s). */
 export function download(
   filename: string,
   content: string,
@@ -42,6 +44,7 @@ export function download(
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
+/** Copies to the clipboard; resolves false (never throws) when the clipboard API is unavailable or denied. */
 export async function copyText(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text);
@@ -51,6 +54,7 @@ export async function copyText(text: string): Promise<boolean> {
   }
 }
 
+/** First 7 characters of a commit SHA, or 'local' for local folders (null commit). */
 export function shortSha(commit: string | null): string {
   return commit ? commit.slice(0, 7) : 'local';
 }

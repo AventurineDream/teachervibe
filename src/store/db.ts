@@ -15,6 +15,7 @@ const DB_VERSION = 1;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
+/** Opens (once per page, cached) the `reader-store` database, creating stores on first use. Rejects with the IndexedDB error. */
 export function openDb(): Promise<IDBDatabase> {
   dbPromise ??= new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
@@ -34,6 +35,7 @@ export function openDb(): Promise<IDBDatabase> {
   return dbPromise;
 }
 
+/** Runs one request in its own transaction on `store` and resolves with its result. */
 function tx<T>(
   db: IDBDatabase,
   store: string,
@@ -48,6 +50,7 @@ function tx<T>(
   });
 }
 
+/** Inserts or replaces an annotation by `id`. */
 export async function putAnnotation(
   db: IDBDatabase,
   annotation: Annotation
@@ -55,6 +58,7 @@ export async function putAnnotation(
   await tx(db, 'annotations', 'readwrite', (s) => s.put(annotation));
 }
 
+/** Deletes the annotation with `id`; succeeds even if it does not exist. */
 export async function deleteAnnotation(
   db: IDBDatabase,
   id: string
@@ -62,6 +66,7 @@ export async function deleteAnnotation(
   await tx(db, 'annotations', 'readwrite', (s) => s.delete(id));
 }
 
+/** The annotation with `id`, or undefined. */
 export async function getAnnotation(
   db: IDBDatabase,
   id: string
@@ -74,6 +79,7 @@ export async function getAnnotation(
   );
 }
 
+/** Annotations whose `anchor.repoId` equals `repoId`. */
 export async function listAnnotations(
   db: IDBDatabase,
   repoId: string
@@ -86,6 +92,7 @@ export async function listAnnotations(
   );
 }
 
+/** Every stored annotation across all repositories. */
 export async function listAllAnnotations(
   db: IDBDatabase
 ): Promise<Annotation[]> {
@@ -97,6 +104,7 @@ export async function listAllAnnotations(
   );
 }
 
+/** Upserts all `annotations` in one transaction (all or none); resolves with the count written. Existing ids are overwritten. */
 export async function importAnnotationBatch(
   db: IDBDatabase,
   annotations: Annotation[]
@@ -110,6 +118,7 @@ export async function importAnnotationBatch(
   });
 }
 
+/** Stores `value` under `key` in the key/value store, replacing any previous value. */
 export async function kvSet(
   db: IDBDatabase,
   key: string,
@@ -118,6 +127,7 @@ export async function kvSet(
   await tx(db, 'kv', 'readwrite', (s) => s.put(value, key));
 }
 
+/** The value stored under `key`, or undefined. */
 export async function kvGet<T>(
   db: IDBDatabase,
   key: string

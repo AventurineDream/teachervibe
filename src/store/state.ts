@@ -58,6 +58,7 @@ export const initialState: AppState = {
 
 export type Listener = (state: AppState) => void;
 
+/** Minimal observable state holder: replace with commit(), merge with patch(), listen with subscribe(). Listeners run synchronously. */
 export class Store {
   private state: AppState;
   private listeners = new Set<Listener>();
@@ -87,6 +88,10 @@ export class Store {
   }
 }
 
+/**
+ * Returns the reading trail with `entry` appended, capped at the latest 100 entries. If `entry` has the same
+ * path, commit and range as the last one, the original array is returned unchanged so no re-render is triggered.
+ */
 export function pushTrail(
   state: AppState,
   entry: ReadingTrailEntry
