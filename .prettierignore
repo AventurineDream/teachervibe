@@ -1,0 +1,10 @@
+node_modules
+dist
+playwright-report
+test-results
+package-lock.json
+*.md
+*.json
+*.yml
+*.html
+*.css
