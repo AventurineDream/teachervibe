@@ -34,7 +34,12 @@ export function openDb(): Promise<IDBDatabase> {
   return dbPromise;
 }
 
-function tx<T>(db: IDBDatabase, store: string, mode: IDBTransactionMode, run: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+function tx<T>(
+  db: IDBDatabase,
+  store: string,
+  mode: IDBTransactionMode,
+  run: (s: IDBObjectStore) => IDBRequest<T>
+): Promise<T> {
   return new Promise((resolve, reject) => {
     const t = db.transaction(store, mode);
     const req = run(t.objectStore(store));
@@ -43,27 +48,59 @@ function tx<T>(db: IDBDatabase, store: string, mode: IDBTransactionMode, run: (s
   });
 }
 
-export async function putAnnotation(db: IDBDatabase, annotation: Annotation): Promise<void> {
+export async function putAnnotation(
+  db: IDBDatabase,
+  annotation: Annotation
+): Promise<void> {
   await tx(db, 'annotations', 'readwrite', (s) => s.put(annotation));
 }
 
-export async function deleteAnnotation(db: IDBDatabase, id: string): Promise<void> {
+export async function deleteAnnotation(
+  db: IDBDatabase,
+  id: string
+): Promise<void> {
   await tx(db, 'annotations', 'readwrite', (s) => s.delete(id));
 }
 
-export async function getAnnotation(db: IDBDatabase, id: string): Promise<Annotation | undefined> {
-  return tx(db, 'annotations', 'readonly', (s) => s.get(id) as IDBRequest<Annotation | undefined>);
+export async function getAnnotation(
+  db: IDBDatabase,
+  id: string
+): Promise<Annotation | undefined> {
+  return tx(
+    db,
+    'annotations',
+    'readonly',
+    (s) => s.get(id) as IDBRequest<Annotation | undefined>
+  );
 }
 
-export async function listAnnotations(db: IDBDatabase, repoId: string): Promise<Annotation[]> {
-  return tx(db, 'annotations', 'readonly', (s) => s.index('byRepo').getAll(repoId) as IDBRequest<Annotation[]>);
+export async function listAnnotations(
+  db: IDBDatabase,
+  repoId: string
+): Promise<Annotation[]> {
+  return tx(
+    db,
+    'annotations',
+    'readonly',
+    (s) => s.index('byRepo').getAll(repoId) as IDBRequest<Annotation[]>
+  );
 }
 
-export async function listAllAnnotations(db: IDBDatabase): Promise<Annotation[]> {
-  return tx(db, 'annotations', 'readonly', (s) => s.getAll() as IDBRequest<Annotation[]>);
+export async function listAllAnnotations(
+  db: IDBDatabase
+): Promise<Annotation[]> {
+  return tx(
+    db,
+    'annotations',
+    'readonly',
+    (s) => s.getAll() as IDBRequest<Annotation[]>
+  );
 }
 
-export async function importAnnotationBatch(db: IDBDatabase, annotations: Annotation[]): Promise<number> {
+export async function importAnnotationBatch(
+  db: IDBDatabase,
+  annotations: Annotation[]
+): Promise<number> {
   const t = db.transaction('annotations', 'readwrite');
   const store = t.objectStore('annotations');
   for (const a of annotations) store.put(a);
@@ -73,10 +110,22 @@ export async function importAnnotationBatch(db: IDBDatabase, annotations: Annota
   });
 }
 
-export async function kvSet(db: IDBDatabase, key: string, value: unknown): Promise<void> {
+export async function kvSet(
+  db: IDBDatabase,
+  key: string,
+  value: unknown
+): Promise<void> {
   await tx(db, 'kv', 'readwrite', (s) => s.put(value, key));
 }
 
-export async function kvGet<T>(db: IDBDatabase, key: string): Promise<T | undefined> {
-  return tx(db, 'kv', 'readonly', (s) => s.get(key) as IDBRequest<T | undefined>);
+export async function kvGet<T>(
+  db: IDBDatabase,
+  key: string
+): Promise<T | undefined> {
+  return tx(
+    db,
+    'kv',
+    'readonly',
+    (s) => s.get(key) as IDBRequest<T | undefined>
+  );
 }

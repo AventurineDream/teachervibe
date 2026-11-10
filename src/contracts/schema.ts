@@ -64,12 +64,21 @@ export function repoId(source: RepositorySource): string {
 }
 
 /** Canonical web URL for a source, when one exists. Local sources have none. */
-export function repoWebUrl(source: RepositorySource, commit?: string | null): string | null {
+export function repoWebUrl(
+  source: RepositorySource,
+  commit?: string | null
+): string | null {
   switch (source.kind) {
     case 'github':
-      return `https://github.com/${source.owner}/${source.repo}` + (commit ? `/tree/${commit}` : '');
+      return (
+        `https://github.com/${source.owner}/${source.repo}` +
+        (commit ? `/tree/${commit}` : '')
+      );
     case 'forgejo':
-      return `${source.baseUrl}/${source.owner}/${source.repo}` + (commit ? `/src/commit/${commit}` : '');
+      return (
+        `${source.baseUrl}/${source.owner}/${source.repo}` +
+        (commit ? `/src/commit/${commit}` : '')
+      );
     case 'local':
       return null;
   }
@@ -128,11 +137,24 @@ export interface Anchor {
   contextAfter: string;
 }
 
-export type AnnotationType = 'note' | 'question' | 'request' | 'decision' | 'concern';
-export const ANNOTATION_TYPES: readonly AnnotationType[] = ['note', 'question', 'request', 'decision', 'concern'];
+export type AnnotationType =
+  'note' | 'question' | 'request' | 'decision' | 'concern';
+export const ANNOTATION_TYPES: readonly AnnotationType[] = [
+  'note',
+  'question',
+  'request',
+  'decision',
+  'concern',
+];
 
-export type AnnotationStatus = 'open' | 'handed-off' | 'addressed' | 'superseded';
-export const ANNOTATION_STATUSES: readonly AnnotationStatus[] = ['open', 'handed-off', 'addressed', 'superseded'];
+export type AnnotationStatus =
+  'open' | 'handed-off' | 'addressed' | 'superseded';
+export const ANNOTATION_STATUSES: readonly AnnotationStatus[] = [
+  'open',
+  'handed-off',
+  'addressed',
+  'superseded',
+];
 
 export interface Annotation {
   id: string;

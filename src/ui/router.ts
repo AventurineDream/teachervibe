@@ -55,7 +55,12 @@ export function parseHash(hash: string): Route | null {
     commit = parts[3] || null;
     rest = parts.slice(4);
   } else if (kind === 'fj' && parts.length >= 5) {
-    source = { kind: 'forgejo', baseUrl: parts[1]!, owner: parts[2]!, repo: parts[3]! };
+    source = {
+      kind: 'forgejo',
+      baseUrl: parts[1]!,
+      owner: parts[2]!,
+      repo: parts[3]!,
+    };
     commit = parts[4] || null;
     rest = parts.slice(5);
   } else if (kind === 'local' && parts.length >= 2) {

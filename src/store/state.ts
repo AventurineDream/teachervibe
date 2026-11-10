@@ -7,7 +7,7 @@ import type {
   Annotation,
   FileRecord,
   ReadingTrailEntry,
-  RepositorySnapshot
+  RepositorySnapshot,
 } from '../contracts/schema.js';
 
 export type AppPhase = 'idle' | 'opening' | 'ready' | 'error';
@@ -53,7 +53,7 @@ export const initialState: AppState = {
   searchQuery: '',
   drawer: null,
   inspectorTarget: null,
-  statusMessage: null
+  statusMessage: null,
 };
 
 export type Listener = (state: AppState) => void;
@@ -87,10 +87,18 @@ export class Store {
   }
 }
 
-export function pushTrail(state: AppState, entry: ReadingTrailEntry): ReadingTrailEntry[] {
+export function pushTrail(
+  state: AppState,
+  entry: ReadingTrailEntry
+): ReadingTrailEntry[] {
   const last = state.trail[state.trail.length - 1];
-  if (last && last.path === entry.path && last.commit === entry.commit &&
-      last.range?.start === entry.range?.start && last.range?.end === entry.range?.end) {
+  if (
+    last &&
+    last.path === entry.path &&
+    last.commit === entry.commit &&
+    last.range?.start === entry.range?.start &&
+    last.range?.end === entry.range?.end
+  ) {
     return state.trail;
   }
   return [...state.trail.slice(-99), entry];

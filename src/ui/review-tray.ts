@@ -33,23 +33,39 @@ export class ReaderTray extends HTMLElement {
         const packet = this.app?.packet(this.targetRef());
         if (packet)
           void copyText(packet.prompt).then((ok) =>
-            this.app?.setStatus(ok ? 'Prompt copied - paste it straight into your coding agent.' : 'Copy failed.')
+            this.app?.setStatus(
+              ok
+                ? 'Prompt copied - paste it straight into your coding agent.'
+                : 'Copy failed.'
+            )
           );
       } else if (action === 'export-md') {
         const packet = this.app.packet(this.targetRef());
-        if (packet) download('review-packet.md', packet.markdown, 'text/markdown');
+        if (packet)
+          download('review-packet.md', packet.markdown, 'text/markdown');
       } else if (action === 'export-json') {
         const packet = this.app.packet(this.targetRef());
-        if (packet) download('review-packet.json', packet.json, 'application/json');
+        if (packet)
+          download('review-packet.json', packet.json, 'application/json');
       } else if (action === 'copy-md') {
         const packet = this.app.packet(this.targetRef());
-        if (packet) void copyText(packet.markdown).then((ok) => this.app?.setStatus(ok ? 'Packet Markdown copied - paste it into an agent conversation.' : 'Copy failed.'));
+        if (packet)
+          void copyText(packet.markdown).then((ok) =>
+            this.app?.setStatus(
+              ok
+                ? 'Packet Markdown copied - paste it into an agent conversation.'
+                : 'Copy failed.'
+            )
+          );
       }
     });
   }
 
   private targetRef(): string {
-    return this.querySelector<HTMLInputElement>('[data-target-ref]')?.value.trim() ?? '';
+    return (
+      this.querySelector<HTMLInputElement>('[data-target-ref]')?.value.trim() ??
+      ''
+    );
   }
 
   private render(state: AppState): void {
@@ -72,8 +88,14 @@ export class ReaderTray extends HTMLElement {
       })
       .join('');
 
-    const packet = state.tray.length && state.snapshot ? this.app!.packet(this.targetRef()) : null;
-    const preview = this.showPreview && packet ? `<pre class="packet-preview">${escapeHtml(packet.markdown)}</pre>` : '';
+    const packet =
+      state.tray.length && state.snapshot
+        ? this.app!.packet(this.targetRef())
+        : null;
+    const preview =
+      this.showPreview && packet
+        ? `<pre class="packet-preview">${escapeHtml(packet.markdown)}</pre>`
+        : '';
 
     renderUnlessFocused(
       this,

@@ -41,7 +41,7 @@ const TYPE_GLYPHS: Record<string, string> = {
   question: '?',
   request: 'R',
   decision: 'D',
-  concern: '!'
+  concern: '!',
 };
 
 export class ReaderPane extends HTMLElement {
@@ -61,7 +61,10 @@ export class ReaderPane extends HTMLElement {
     this.addEventListener('mousedown', (e) => {
       // Interactive elements (margin markers, buttons) handle their own clicks;
       // a selection change here would re-render and swallow the click.
-      if ((e.target as HTMLElement).closest('button, a, input, select, textarea')) return;
+      if (
+        (e.target as HTMLElement).closest('button, a, input, select, textarea')
+      )
+        return;
       const ln = (e.target as HTMLElement).closest<HTMLElement>('[data-line]');
       if (!ln || !this.app) return;
       const line = Number(ln.dataset['line']);
@@ -83,7 +86,9 @@ export class ReaderPane extends HTMLElement {
       if (this.dragAnchor === null || !this.app || !(e.buttons & 1)) return;
       const ln = (e.target as HTMLElement).closest<HTMLElement>('[data-line]');
       if (!ln) return;
-      this.app.selectRange(this.dragAnchor, Number(ln.dataset['line']), { updateHash: false });
+      this.app.selectRange(this.dragAnchor, Number(ln.dataset['line']), {
+        updateHash: false,
+      });
     });
     window.addEventListener('mouseup', () => {
       if (this.dragAnchor !== null && this.app) {
@@ -100,7 +105,9 @@ export class ReaderPane extends HTMLElement {
         this.wrap = !this.wrap;
         this.render(this.app.store.get());
       } else if (action === 'copy-link') {
-        void copyText(location.href).then((ok) => this.app?.setStatus(ok ? 'Deep link copied.' : 'Copy failed.'));
+        void copyText(location.href).then((ok) =>
+          this.app?.setStatus(ok ? 'Deep link copied.' : 'Copy failed.')
+        );
       } else if (action === 'annotate') {
         this.app.beginDraft();
       } else if (action === 'clear') {
@@ -114,7 +121,9 @@ export class ReaderPane extends HTMLElement {
       }
     });
     this.addEventListener('input', (e) => {
-      const input = (e.target as HTMLElement).closest<HTMLInputElement>('[data-search]');
+      const input = (e.target as HTMLElement).closest<HTMLInputElement>(
+        '[data-search]'
+      );
       if (input) this.app?.setSearch(input.value);
     });
     this.addEventListener('keydown', (e) => {
@@ -127,9 +136,20 @@ export class ReaderPane extends HTMLElement {
       const sel = this.app.store.get().selection;
       const lineCount = this.lineCount();
       const k = e.key.toLowerCase(); // Shift+J reports e.key as 'J'
-      if (k === 'j' || e.key === 'ArrowDown' || k === 'k' || e.key === 'ArrowUp') {
+      if (
+        k === 'j' ||
+        e.key === 'ArrowDown' ||
+        k === 'k' ||
+        e.key === 'ArrowUp'
+      ) {
         const delta = k === 'j' || e.key === 'ArrowDown' ? 1 : -1;
-        const base = sel ? (e.shiftKey ? sel.end : sel.start) : delta > 0 ? 0 : lineCount + 1;
+        const base = sel
+          ? e.shiftKey
+            ? sel.end
+            : sel.start
+          : delta > 0
+            ? 0
+            : lineCount + 1;
         const next = Math.min(lineCount, Math.max(1, base + delta));
         if (e.shiftKey && sel) this.app.selectRange(sel.start, next);
         else this.app.selectRange(next, next);
@@ -168,7 +188,11 @@ export class ReaderPane extends HTMLElement {
     if (matches.length === 0 || !this.app) return;
     const sel = this.app.store.get().selection;
     const cur = sel?.start ?? 0;
-    const next = dir === 1 ? matches.find((m) => m > cur) ?? matches[0]! : [...matches].reverse().find((m) => m < cur) ?? matches[matches.length - 1]!;
+    const next =
+      dir === 1
+        ? (matches.find((m) => m > cur) ?? matches[0]!)
+        : ([...matches].reverse().find((m) => m < cur) ??
+          matches[matches.length - 1]!);
     this.app.selectRange(next, next);
     this.scrollToLine(next);
   }
@@ -179,7 +203,10 @@ export class ReaderPane extends HTMLElement {
     if (!scroller || !row) return;
     // scrollIntoView also scrolls the page and other scrollable ancestors.
     // Only the code pane should move when explicitly navigating to a line.
-    scroller.scrollTop = row.offsetTop - scroller.offsetTop - (scroller.clientHeight - row.offsetHeight) / 2;
+    scroller.scrollTop =
+      row.offsetTop -
+      scroller.offsetTop -
+      (scroller.clientHeight - row.offsetHeight) / 2;
   }
 
   private annotationsForFile(state: AppState): Annotation[] {
@@ -204,7 +231,8 @@ export class ReaderPane extends HTMLElement {
   private render(state: AppState): void {
     // Re-rendering rebuilds the search input; preserve focus and caret across renders.
     const active = document.activeElement as HTMLInputElement | null;
-    const searchFocused = active?.matches?.('[data-search]') && this.contains(active);
+    const searchFocused =
+      active?.matches?.('[data-search]') && this.contains(active);
     const caret = searchFocused ? active!.selectionStart : null;
     const oldScroller = this.querySelector<HTMLElement>('.code-scroll');
     const oldScrollTop = oldScroller?.scrollTop ?? 0;
@@ -255,7 +283,8 @@ export class ReaderPane extends HTMLElement {
       body = this.renderCode(state, file.text!);
     }
 
-    const hostLink = file && this.app ? hostUrl(this.app, state, file.record.path) : null;
+    const hostLink =
+      file && this.app ? hostUrl(this.app, state, file.record.path) : null;
     this.innerHTML = `
       <div class="pane-head">
         <span class="crumb">${file ? escapeHtml(file.record.path) : ''}</span>
@@ -269,11 +298,15 @@ export class ReaderPane extends HTMLElement {
         ${hostLink ? `<a class="btn-link" href="${escapeHtml(hostLink)}" target="_blank" rel="noreferrer">view on host</a>` : ''}
         <button data-pane="copy-link" title="Copy deep link to this view">copy link</button>
       </div>
-      ${state.selection ? `<div class="selection-bar">
+      ${
+        state.selection
+          ? `<div class="selection-bar">
         L${state.selection.start}-L${state.selection.end} selected
         <button data-pane="annotate">annotate</button>
         <button data-pane="clear">clear</button>
-      </div>` : `<div class="selection-bar" hidden></div>`}
+      </div>`
+          : `<div class="selection-bar" hidden></div>`
+      }
       <div class="code-scroll ${this.wrap ? 'wrap' : ''}">${body}</div>
     `;
   }
@@ -288,8 +321,10 @@ export class ReaderPane extends HTMLElement {
     for (const a of this.annotationsForFile(state)) {
       const res = this.resolutions.get(a.id);
       if (res && res.state === 'moved') continue; // moved anchors surface in the inspector, not guessed onto nearby code
-      const startLine = res && res.state !== 'exact' ? res.start.line : a.anchor.start.line;
-      const endLine = res && res.state !== 'exact' ? res.end.line : a.anchor.end.line;
+      const startLine =
+        res && res.state !== 'exact' ? res.start.line : a.anchor.start.line;
+      const endLine =
+        res && res.state !== 'exact' ? res.end.line : a.anchor.end.line;
       for (let l = startLine; l <= endLine; l++) {
         const list = byLine.get(l) ?? [];
         list.push(a);
@@ -316,7 +351,8 @@ export class ReaderPane extends HTMLElement {
       const markerHtml = markers
         .slice(0, 3)
         .map((a) => {
-          const stale = a.anchor.commit !== state.snapshot!.commit ? ' stale' : '';
+          const stale =
+            a.anchor.commit !== state.snapshot!.commit ? ' stale' : '';
           const res = this.resolutions.get(a.id);
           const relocated = res?.state === 'relocated' ? ' relocated' : '';
           return `<button class="marker type-${a.type}${stale}${relocated}" data-pane="marker" data-id="${a.id}" title="${escapeHtml(a.type)}: ${escapeHtml(a.body.slice(0, 80))}">${TYPE_GLYPHS[a.type] ?? 'N'}</button>`;

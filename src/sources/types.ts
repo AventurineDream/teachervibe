@@ -7,9 +7,15 @@
  * criteria): not-found, inaccessible, rate-limited, unsupported, network.
  */
 
-import type { FileRecord, RepositorySnapshot, RepositorySource, SourceKind } from '../contracts/schema.js';
+import type {
+  FileRecord,
+  RepositorySnapshot,
+  RepositorySource,
+  SourceKind,
+} from '../contracts/schema.js';
 
-export type SourceErrorKind = 'not-found' | 'inaccessible' | 'rate-limited' | 'unsupported' | 'network';
+export type SourceErrorKind =
+  'not-found' | 'inaccessible' | 'rate-limited' | 'unsupported' | 'network';
 
 export class SourceError extends Error {
   readonly kind: SourceErrorKind;
@@ -33,7 +39,14 @@ export interface SourceAdapter<S extends RepositorySource = RepositorySource> {
    */
   open(source: S, ref?: string): Promise<RepositorySnapshot>;
   /** Load one file's content on demand. Binary and oversized files are explicit states, not errors. */
-  fetchFile(snapshot: RepositorySnapshot, record: FileRecord): Promise<FetchFileResult>;
+  fetchFile(
+    snapshot: RepositorySnapshot,
+    record: FileRecord
+  ): Promise<FetchFileResult>;
   /** Deep link to this file/range on the host's own web UI, when one exists. */
-  webUrl(snapshot: RepositorySnapshot, path?: string, range?: { start: number; end: number }): string | null;
+  webUrl(
+    snapshot: RepositorySnapshot,
+    path?: string,
+    range?: { start: number; end: number }
+  ): string | null;
 }

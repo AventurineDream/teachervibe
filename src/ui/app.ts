@@ -37,21 +37,36 @@ export class ReaderApp extends HTMLElement {
       <reader-tray data-role="tray"></reader-tray>
       <div class="status-line" data-role="status" aria-live="polite"></div>
     `;
-    this.querySelector<HTMLFormElement>('[data-role="switcher"]')!.addEventListener('submit', (e) => {
+    this.querySelector<HTMLFormElement>(
+      '[data-role="switcher"]'
+    )!.addEventListener('submit', (e) => {
       e.preventDefault();
       const input = this.querySelector<HTMLInputElement>('input[name="repo"]')!;
       void this.app?.openFromInput(input.value);
     });
     this.addEventListener('click', (e) => {
-      const action = (e.target as HTMLElement).closest<HTMLElement>('[data-action]')?.dataset['action'];
+      const action = (e.target as HTMLElement).closest<HTMLElement>(
+        '[data-action]'
+      )?.dataset['action'];
       if (!action || !this.app) return;
       if (action === 'open-local') void this.app.openLocal();
-      if (action === 'drawer-nav') this.app.setDrawer(this.app.store.get().drawer === 'nav' ? null : 'nav');
-      if (action === 'drawer-tray') this.app.setDrawer(this.app.store.get().drawer === 'tray' ? null : 'tray');
+      if (action === 'drawer-nav')
+        this.app.setDrawer(
+          this.app.store.get().drawer === 'nav' ? null : 'nav'
+        );
+      if (action === 'drawer-tray')
+        this.app.setDrawer(
+          this.app.store.get().drawer === 'tray' ? null : 'tray'
+        );
       if (action === 'export-backup') void this.exportBackup();
       if (action === 'import-backup') this.pickImportFile();
     });
-    for (const [role, tag] of [['nav', 'reader-nav'], ['pane', 'reader-pane'], ['inspector', 'reader-inspector'], ['tray', 'reader-tray']] as const) {
+    for (const [role, tag] of [
+      ['nav', 'reader-nav'],
+      ['pane', 'reader-pane'],
+      ['inspector', 'reader-inspector'],
+      ['tray', 'reader-tray'],
+    ] as const) {
       const el = this.querySelector(`[data-role="${role}"]`);
       (el as unknown as { connect(a: App): void }).connect(app);
       void tag;
@@ -61,7 +76,11 @@ export class ReaderApp extends HTMLElement {
 
   private async exportBackup(): Promise<void> {
     if (!this.app) return;
-    download('teachervibe-annotations.json', await this.app.exportBackup(), 'application/json');
+    download(
+      'teachervibe-annotations.json',
+      await this.app.exportBackup(),
+      'application/json'
+    );
     this.app.setStatus('Exported annotation backup.');
   }
 
@@ -89,9 +108,13 @@ export class ReaderApp extends HTMLElement {
     } else {
       commit.hidden = true;
     }
-    const localBtn = this.querySelector<HTMLButtonElement>('[data-role="local-btn"]')!;
+    const localBtn = this.querySelector<HTMLButtonElement>(
+      '[data-role="local-btn"]'
+    )!;
     localBtn.disabled = !this.app?.localFoldersSupported();
-    localBtn.title = localBtn.disabled ? 'This browser cannot open local folders (File System Access API missing)' : 'Open a local folder';
+    localBtn.title = localBtn.disabled
+      ? 'This browser cannot open local folders (File System Access API missing)'
+      : 'Open a local folder';
 
     const error = this.querySelector<HTMLElement>('[data-role="error"]')!;
     if (state.error) {
@@ -106,7 +129,9 @@ export class ReaderApp extends HTMLElement {
     }
 
     const status = this.querySelector<HTMLElement>('[data-role="status"]')!;
-    status.textContent = state.statusMessage ?? (state.phase === 'opening' ? 'Opening repository...' : '');
+    status.textContent =
+      state.statusMessage ??
+      (state.phase === 'opening' ? 'Opening repository...' : '');
     this.classList.toggle('drawer-nav', state.drawer === 'nav');
     this.classList.toggle('drawer-tray', state.drawer === 'tray');
     this.classList.toggle('inspector-open', state.inspectorTarget !== null);
