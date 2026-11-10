@@ -90,7 +90,7 @@ export class Store {
 
 /**
  * Returns the reading trail with `entry` appended, capped at the latest 100 entries. If `entry` has the same
- * path, commit and range as the last one, the original array is returned unchanged so no re-render is triggered.
+ * path, commit and range as the last one, the original array is returned unchanged to avoid duplicate trail entries.
  */
 export function pushTrail(
   state: AppState,
