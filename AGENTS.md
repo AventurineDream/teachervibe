@@ -14,7 +14,7 @@ npm install
 ## Commands
 | Task | Command |
 |---|---|
-| Format | none yet (Prettier commit planned; see Aven Code Standard §5.5) |
+| Format | `npm run format` (check: `npm run format:check`) |
 | Lint | none |
 | Typecheck | `npx tsc --noEmit` (also run by `npm run build`) |
 | Test (fast) | `npm run test:unit` |
