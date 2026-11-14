@@ -1,0 +1,24 @@
+# Shared editor defaults (Aven Code Standard §5.3). Formatters below are authoritative;
+# this file only keeps editors from fighting them.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.py]
+indent_size = 4
+
+[*.{gd,tscn,tres,godot,cfg}]
+indent_style = tab
+indent_size = 4
+
+[Makefile]
+indent_style = tab
+
+[*.md]
+trim_trailing_whitespace = false

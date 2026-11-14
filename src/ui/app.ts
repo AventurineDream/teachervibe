@@ -2,16 +2,29 @@
  * <reader-app> - shell: header with the repository switcher, three regions
  * (nav rail, document pane, inspector), review tray, status and error surfaces.
  * Regions are separate custom elements; the shell owns layout and header actions.
+ * connect() subscribes to App.store and binds actions; updates mutate this element's
+ * DOM, while repository loading and annotation persistence remain App's responsibility.
  */
 
 import type { App } from '../store/actions.js';
 import type { AppState } from '../store/state.js';
 import { escapeHtml, renderUnlessFocused, download, shortSha } from './dom.js';
 
+/**
+ * The `<reader-app>` shell. Inert until connect(): main.ts connects the page's App,
+ * and the shell passes it on to the four region elements it renders.
+ */
 export class ReaderApp extends HTMLElement {
   private app: App | null = null;
   private unsubscribe: (() => void) | null = null;
 
+  /**
+   * Renders the shell, wires the header to `app`, connects the regions, and re-renders
+   * on every store change. Call once: listeners added here are never removed, so a
+   * second call would handle each click twice (only the store subscription is
+   * replaced).
+   * @param app - Page controller shared with the region elements.
+   */
   connect(app: App): void {
     this.app = app;
     this.unsubscribe?.();
@@ -37,21 +50,38 @@ export class ReaderApp extends HTMLElement {
       <reader-tray data-role="tray"></reader-tray>
       <div class="status-line" data-role="status" aria-live="polite"></div>
     `;
-    this.querySelector<HTMLFormElement>('[data-role="switcher"]')!.addEventListener('submit', (e) => {
+    this.querySelector<HTMLFormElement>(
+      '[data-role="switcher"]'
+    )!.addEventListener('submit', (e) => {
       e.preventDefault();
       const input = this.querySelector<HTMLInputElement>('input[name="repo"]')!;
       void this.app?.openFromInput(input.value);
     });
     this.addEventListener('click', (e) => {
-      const action = (e.target as HTMLElement).closest<HTMLElement>('[data-action]')?.dataset['action'];
+      const action = (e.target as HTMLElement).closest<HTMLElement>(
+        '[data-action]'
+      )?.dataset['action'];
       if (!action || !this.app) return;
       if (action === 'open-local') void this.app.openLocal();
-      if (action === 'drawer-nav') this.app.setDrawer(this.app.store.get().drawer === 'nav' ? null : 'nav');
-      if (action === 'drawer-tray') this.app.setDrawer(this.app.store.get().drawer === 'tray' ? null : 'tray');
+      if (action === 'drawer-nav')
+        this.app.setDrawer(
+          this.app.store.get().drawer === 'nav' ? null : 'nav'
+        );
+      if (action === 'drawer-tray')
+        this.app.setDrawer(
+          this.app.store.get().drawer === 'tray' ? null : 'tray'
+        );
+      // NOTE: nothing in src/ui renders an `export-backup` or `import-backup`
+      // control, so these two actions cannot currently be triggered from the UI.
       if (action === 'export-backup') void this.exportBackup();
       if (action === 'import-backup') this.pickImportFile();
     });
-    for (const [role, tag] of [['nav', 'reader-nav'], ['pane', 'reader-pane'], ['inspector', 'reader-inspector'], ['tray', 'reader-tray']] as const) {
+    for (const [role, tag] of [
+      ['nav', 'reader-nav'],
+      ['pane', 'reader-pane'],
+      ['inspector', 'reader-inspector'],
+      ['tray', 'reader-tray'],
+    ] as const) {
       const el = this.querySelector(`[data-role="${role}"]`);
       (el as unknown as { connect(a: App): void }).connect(app);
       void tag;
@@ -61,7 +91,11 @@ export class ReaderApp extends HTMLElement {
 
   private async exportBackup(): Promise<void> {
     if (!this.app) return;
-    download('teachervibe-annotations.json', await this.app.exportBackup(), 'application/json');
+    download(
+      'teachervibe-annotations.json',
+      await this.app.exportBackup(),
+      'application/json'
+    );
     this.app.setStatus('Exported annotation backup.');
   }
 
@@ -89,9 +123,13 @@ export class ReaderApp extends HTMLElement {
     } else {
       commit.hidden = true;
     }
-    const localBtn = this.querySelector<HTMLButtonElement>('[data-role="local-btn"]')!;
+    const localBtn = this.querySelector<HTMLButtonElement>(
+      '[data-role="local-btn"]'
+    )!;
     localBtn.disabled = !this.app?.localFoldersSupported();
-    localBtn.title = localBtn.disabled ? 'This browser cannot open local folders (File System Access API missing)' : 'Open a local folder';
+    localBtn.title = localBtn.disabled
+      ? 'This browser cannot open local folders (File System Access API missing)'
+      : 'Open a local folder';
 
     const error = this.querySelector<HTMLElement>('[data-role="error"]')!;
     if (state.error) {
@@ -106,7 +144,9 @@ export class ReaderApp extends HTMLElement {
     }
 
     const status = this.querySelector<HTMLElement>('[data-role="status"]')!;
-    status.textContent = state.statusMessage ?? (state.phase === 'opening' ? 'Opening repository...' : '');
+    status.textContent =
+      state.statusMessage ??
+      (state.phase === 'opening' ? 'Opening repository...' : '');
     this.classList.toggle('drawer-nav', state.drawer === 'nav');
     this.classList.toggle('drawer-tray', state.drawer === 'tray');
     this.classList.toggle('inspector-open', state.inspectorTarget !== null);
@@ -128,6 +168,7 @@ function errorHint(kind: string): string {
   }
 }
 
+/** Registers `<reader-app>`. Call once per page: customElements.define() throws on a repeat. */
 export function defineApp(): void {
   customElements.define('reader-app', ReaderApp);
 }

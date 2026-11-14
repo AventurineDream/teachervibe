@@ -7,7 +7,7 @@ import type {
   Annotation,
   FileRecord,
   ReadingTrailEntry,
-  RepositorySnapshot
+  RepositorySnapshot,
 } from '../contracts/schema.js';
 
 export type AppPhase = 'idle' | 'opening' | 'ready' | 'error';
@@ -53,11 +53,12 @@ export const initialState: AppState = {
   searchQuery: '',
   drawer: null,
   inspectorTarget: null,
-  statusMessage: null
+  statusMessage: null,
 };
 
 export type Listener = (state: AppState) => void;
 
+/** Minimal observable state holder: replace with commit(), merge with patch(), listen with subscribe(). Listeners run synchronously. */
 export class Store {
   private state: AppState;
   private listeners = new Set<Listener>();
@@ -87,10 +88,22 @@ export class Store {
   }
 }
 
-export function pushTrail(state: AppState, entry: ReadingTrailEntry): ReadingTrailEntry[] {
+/**
+ * Returns the reading trail with `entry` appended, capped at the latest 100 entries. If `entry` has the same
+ * path, commit and range as the last one, the original array is returned unchanged to avoid duplicate trail entries.
+ */
+export function pushTrail(
+  state: AppState,
+  entry: ReadingTrailEntry
+): ReadingTrailEntry[] {
   const last = state.trail[state.trail.length - 1];
-  if (last && last.path === entry.path && last.commit === entry.commit &&
-      last.range?.start === entry.range?.start && last.range?.end === entry.range?.end) {
+  if (
+    last &&
+    last.path === entry.path &&
+    last.commit === entry.commit &&
+    last.range?.start === entry.range?.start &&
+    last.range?.end === entry.range?.end
+  ) {
     return state.trail;
   }
   return [...state.trail.slice(-99), entry];

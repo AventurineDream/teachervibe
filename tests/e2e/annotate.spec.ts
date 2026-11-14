@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
-import { installGitHubFixture, openFixtureFile, openFixtureRepo } from './fixtures.js';
+import {
+  installGitHubFixture,
+  openFixtureFile,
+  openFixtureRepo,
+} from './fixtures.js';
 
 test.beforeEach(async ({ page }) => {
   await installGitHubFixture(page);
@@ -10,11 +14,17 @@ test.beforeEach(async ({ page }) => {
 
 async function selectLines(page: Page, start: number, end: number) {
   await page.locator(`[data-line="${start}"] .gutter`).click();
-  await page.locator(`[data-line="${end}"] .gutter`).click({ modifiers: ['Shift'] });
-  await expect(page.locator('.selection-bar')).toContainText(`L${start}-L${end} selected`);
+  await page
+    .locator(`[data-line="${end}"] .gutter`)
+    .click({ modifiers: ['Shift'] });
+  await expect(page.locator('.selection-bar')).toContainText(
+    `L${start}-L${end} selected`
+  );
 }
 
-test('a line-range annotation survives reload with its exact quoted context', async ({ page }) => {
+test('a line-range annotation survives reload with its exact quoted context', async ({
+  page,
+}) => {
   await selectLines(page, 5, 6);
   await page.locator('[data-pane="annotate"]').click();
   await page.locator('[data-draft="type"]').selectOption('question');
@@ -26,14 +36,20 @@ test('a line-range annotation survives reload with its exact quoted context', as
   await expect(card).toContainText('why is add exported?');
   await expect(card.locator('.quote')).toContainText('export function add');
   await card.locator('.anchor-details summary').click();
-  await expect(card.locator('.anchor-details')).toContainText('github:octo/hello');
+  await expect(card.locator('.anchor-details')).toContainText(
+    'github:octo/hello'
+  );
   await expect(card.locator('.anchor-details')).toContainText('5:1 - 6:16');
 
   // reload: annotation persists, quote intact
   await page.reload();
   await expect(page.locator('.crumb')).toHaveText('src/app.ts');
-  await expect(page.locator('.card', { hasText: 'why is add exported?' })).toBeVisible();
-  await expect(page.locator('.card .quote').first()).toContainText('return a + b;');
+  await expect(
+    page.locator('.card', { hasText: 'why is add exported?' })
+  ).toBeVisible();
+  await expect(page.locator('.card .quote').first()).toContainText(
+    'return a + b;'
+  );
 
   // margin markers render beside the anchored lines
   await expect(page.locator('[data-line="5"] .marker')).toBeVisible();
@@ -41,7 +57,9 @@ test('a line-range annotation survives reload with its exact quoted context', as
   await expect(page.locator('[data-line="7"] .marker')).toHaveCount(0);
 });
 
-test('deep links restore file and range; back/forward follows the reading trail', async ({ page }) => {
+test('deep links restore file and range; back/forward follows the reading trail', async ({
+  page,
+}) => {
   await selectLines(page, 1, 2);
   const deepLink = page.url();
   expect(deepLink).toContain('?L=1-2');
@@ -69,7 +87,9 @@ test('in-file search finds and jumps between matches', async ({ page }) => {
   await expect(page.locator('.selection-bar')).toContainText('L5-L5');
 });
 
-test('keyboard navigation: j/k move, shift extends, a annotates', async ({ page }) => {
+test('keyboard navigation: j/k move, shift extends, a annotates', async ({
+  page,
+}) => {
   await page.locator('reader-pane').press('j');
   await expect(page.locator('.selection-bar')).toContainText('L1-L1');
   await page.locator('reader-pane').press('j');
@@ -80,8 +100,9 @@ test('keyboard navigation: j/k move, shift extends, a annotates', async ({ page 
   await expect(page.locator('.card.draft')).toBeVisible();
 });
 
-
-test('selecting with the mouse leaves a available to start a draft', async ({ page }) => {
+test('selecting with the mouse leaves a available to start a draft', async ({
+  page,
+}) => {
   await page.locator('[data-line="5"] .gutter').click();
   await page.locator('[data-line="6"] .gutter').click({ modifiers: ['Shift'] });
   await expect(page.locator('.selection-bar')).toContainText('L5-L6 selected');
@@ -90,10 +111,14 @@ test('selecting with the mouse leaves a available to start a draft', async ({ pa
   await expect(page.locator('.card.draft')).toBeVisible();
 });
 
-test('clicking a line or marker does not jump the reading position', async ({ page }) => {
+test('clicking a line or marker does not jump the reading position', async ({
+  page,
+}) => {
   await openFixtureFile(page, 'long.md');
   const scroll = page.locator('.code-scroll');
-  await scroll.evaluate((el) => { el.scrollTop = 1300; });
+  await scroll.evaluate((el) => {
+    el.scrollTop = 1300;
+  });
   const before = await scroll.evaluate((el) => el.scrollTop);
   await page.locator('[data-line="70"] .gutter').click();
   expect(await scroll.evaluate((el) => el.scrollTop)).toBeCloseTo(before, 0);
@@ -104,7 +129,9 @@ test('clicking a line or marker does not jump the reading position', async ({ pa
   expect(await scroll.evaluate((el) => el.scrollTop)).toBeCloseTo(before, 0);
 });
 
-test('review tray remains pinned while reading a long file', async ({ page }) => {
+test('review tray remains pinned while reading a long file', async ({
+  page,
+}) => {
   await openFixtureFile(page, 'long.md');
   const tray = page.locator('reader-tray');
   if ((page.viewportSize()?.width ?? 1280) < 821) {
@@ -112,10 +139,14 @@ test('review tray remains pinned while reading a long file', async ({ page }) =>
   }
   const initial = await tray.boundingBox();
   const scroll = page.locator('.code-scroll');
-  await scroll.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+  await scroll.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
   const after = await tray.boundingBox();
   expect(initial).not.toBeNull();
   expect(after).not.toBeNull();
   expect(after!.y).toBeCloseTo(initial!.y, 0);
-  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(900);
+  expect(
+    await page.evaluate(() => document.documentElement.scrollHeight)
+  ).toBeLessThanOrEqual(900);
 });

@@ -1,6 +1,8 @@
 /**
  * <reader-nav> - left rail with three switchable views: Files, Outline, Trail.
  * Generated, vendored, and binary areas render muted; the tree is read-only.
+ * connect() subscribes to App.store; file and range changes go through App actions,
+ * while view-tab and folder-expansion state stay local to the element.
  */
 
 import type { App } from '../store/actions.js';
@@ -19,8 +21,17 @@ interface TreeNode {
   generated: boolean;
 }
 
-function buildTree(paths: { path: string; binary: boolean; generated: boolean; type: string }[]): TreeNode {
-  const root: TreeNode = { name: '', path: '', children: [], blob: false, binary: false, generated: false };
+function buildTree(
+  paths: { path: string; binary: boolean; generated: boolean; type: string }[]
+): TreeNode {
+  const root: TreeNode = {
+    name: '',
+    path: '',
+    children: [],
+    blob: false,
+    binary: false,
+    generated: false,
+  };
   const dirs = new Map<string, TreeNode>();
   dirs.set('', root);
   for (const f of paths) {
@@ -30,7 +41,14 @@ function buildTree(paths: { path: string; binary: boolean; generated: boolean; t
       const parentPath = prefix;
       prefix = prefix ? `${prefix}/${parts[i]}` : parts[i]!;
       if (!dirs.has(prefix)) {
-        const node: TreeNode = { name: parts[i]!, path: prefix, children: [], blob: false, binary: false, generated: false };
+        const node: TreeNode = {
+          name: parts[i]!,
+          path: prefix,
+          children: [],
+          blob: false,
+          binary: false,
+          generated: false,
+        };
         dirs.set(prefix, node);
         dirs.get(parentPath)!.children.push(node);
       }
@@ -42,7 +60,7 @@ function buildTree(paths: { path: string; binary: boolean; generated: boolean; t
         children: [],
         blob: true,
         binary: f.binary,
-        generated: f.generated
+        generated: f.generated,
       });
     }
   }
@@ -63,11 +81,13 @@ export function outlineFor(path: string, text: string): OutlineItem[] {
   if (lang === 'markdown') {
     lines.forEach((l, i) => {
       const m = l.match(/^(#{1,6})\s+(.+)/);
-      if (m) items.push({ label: m[2]!.trim(), line: i + 1, depth: m[1]!.length });
+      if (m)
+        items.push({ label: m[2]!.trim(), line: i + 1, depth: m[1]!.length });
     });
     return items;
   }
-  const decl = /^(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function|class|interface|type|enum|const|let|var)\s+([A-Za-z_$][\w$]*)/;
+  const decl =
+    /^(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function|class|interface|type|enum|const|let|var)\s+([A-Za-z_$][\w$]*)/;
   lines.forEach((l, i) => {
     const m = l.match(decl);
     if (m) items.push({ label: m[1]!, line: i + 1, depth: 1 });
@@ -75,12 +95,23 @@ export function outlineFor(path: string, text: string): OutlineItem[] {
   return items;
 }
 
+/**
+ * The `<reader-nav>` rail. The active tab and collapsed folders are element state, not
+ * in the Store, so they reset on reload. Choosing a file, outline item or trail entry
+ * also closes the drawer.
+ */
 export class ReaderNav extends HTMLElement {
   private app: App | null = null;
   private tab: Tab = 'files';
   private collapsed = new Set<string>();
   private unsubscribe: (() => void) | null = null;
 
+  /**
+   * Binds the rail to `app`: renders on every store change (nothing is drawn before
+   * the first one) and routes clicks to App.openFile() and App.selectRange(). Call
+   * once: the click listener is never removed.
+   * @param app - Page controller supplying snapshots, trail entries and navigation.
+   */
   connect(app: App): void {
     this.app = app;
     this.unsubscribe?.();
@@ -107,7 +138,12 @@ export class ReaderNav extends HTMLElement {
       } else if (kind === 'trail') {
         void this.app.openFile(
           el.dataset['path']!,
-          el.dataset['start'] ? { start: Number(el.dataset['start']), end: Number(el.dataset['end']) } : null
+          el.dataset['start']
+            ? {
+                start: Number(el.dataset['start']),
+                end: Number(el.dataset['end']),
+              }
+            : null
         );
         this.app.setDrawer(null);
       }
@@ -122,7 +158,7 @@ export class ReaderNav extends HTMLElement {
     const tabs: [Tab, string][] = [
       ['files', 'Files'],
       ['outline', 'Outline'],
-      ['trail', 'Trail']
+      ['trail', 'Trail'],
     ];
     let html = `<div class="tabs" role="tablist">`;
     for (const [id, label] of tabs) {
@@ -138,11 +174,15 @@ export class ReaderNav extends HTMLElement {
 
   private renderFiles(state: AppState): string {
     const root = buildTree(state.snapshot!.tree);
-    if (root.children.length === 0) return `<div class="rail-empty">Empty tree.</div>`;
+    if (root.children.length === 0)
+      return `<div class="rail-empty">Empty tree.</div>`;
     const current = state.file?.record.path;
     const walk = (node: TreeNode): string => {
       let html = '';
-      const sorted = [...node.children].sort((a, b) => Number(b.blob) - Number(a.blob) || a.name.localeCompare(b.name));
+      const sorted = [...node.children].sort(
+        (a, b) =>
+          Number(b.blob) - Number(a.blob) || a.name.localeCompare(b.name)
+      );
       for (const child of sorted) {
         if (!child.blob) {
           const closed = this.collapsed.has(child.path);
@@ -156,13 +196,19 @@ export class ReaderNav extends HTMLElement {
           const cls = ['tree-row', 'file'];
           if (child.path === current) cls.push('current');
           if (child.generated) cls.push('muted');
-          const badge = child.binary ? ' <span class="badge">binary</span>' : child.generated ? ' <span class="badge">generated</span>' : '';
+          const badge = child.binary
+            ? ' <span class="badge">binary</span>'
+            : child.generated
+              ? ' <span class="badge">generated</span>'
+              : '';
           html += `<button class="${cls.join(' ')}" data-nav="file" data-path="${escapeHtml(child.path)}">${escapeHtml(child.name)}${badge}</button>`;
         }
       }
       return html;
     };
-    const truncated = state.snapshot!.truncated ? `<div class="rail-note">Tree listing truncated by the host API.</div>` : '';
+    const truncated = state.snapshot!.truncated
+      ? `<div class="rail-note">Tree listing truncated by the host API.</div>`
+      : '';
     return truncated + walk(root);
   }
 
@@ -171,7 +217,8 @@ export class ReaderNav extends HTMLElement {
       return `<div class="rail-empty">Open a text file to see its outline.</div>`;
     }
     const items = outlineFor(state.file.record.path, state.file.text!);
-    if (items.length === 0) return `<div class="rail-empty">No headings or declarations found (heuristic outline).</div>`;
+    if (items.length === 0)
+      return `<div class="rail-empty">No headings or declarations found (heuristic outline).</div>`;
     return items
       .map(
         (it) =>
@@ -181,19 +228,23 @@ export class ReaderNav extends HTMLElement {
   }
 
   private renderTrail(state: AppState): string {
-    if (state.trail.length === 0) return `<div class="rail-empty">Files you open will appear here.</div>`;
+    if (state.trail.length === 0)
+      return `<div class="rail-empty">Files you open will appear here.</div>`;
     return [...state.trail]
       .reverse()
       .map((t) => {
         const range = t.range ? `:${t.range.start}-${t.range.end}` : '';
         return `<button class="tree-row trail-item" data-nav="trail" data-path="${escapeHtml(t.path)}"${
-          t.range ? ` data-start="${t.range.start}" data-end="${t.range.end}"` : ''
+          t.range
+            ? ` data-start="${t.range.start}" data-end="${t.range.end}"`
+            : ''
         }>${escapeHtml(t.path)}<span class="ln-ref">${range}</span></button>`;
       })
       .join('');
   }
 }
 
+/** Registers `<reader-nav>`. Call once per page: customElements.define() throws on a repeat. */
 export function defineNav(): void {
   customElements.define('reader-nav', ReaderNav);
 }

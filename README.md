@@ -6,6 +6,10 @@ A local-first repository viewer and annotator for people who direct coding agent
 built for people just getting their software start with agent coding. You do not
 need to be a coder: the repo reads like a document, not an IDE.
 
+## Status
+
+**Shelved** (vault lifecycle). The implemented milestone is the Phase 1 read → annotate → hand off loop, including pinned snapshots, IndexedDB annotations, and deterministic review export. Repository maintenance does not change that lifecycle.
+
 Three pillars:
 
 1. **A code annotation protocol for agents** - structured, machine-consumable
@@ -35,11 +39,16 @@ Phase 1 scope: one complete read -> annotate -> hand off loop.
 - Anchors that cannot be re-resolved against the viewed commit say so (`moved`) -
   the viewer never silently reattaches a note to nearby code.
 
-## Run it
+## Quick start
+
+Use Node.js 22+ and npm.
 
 ```sh
-npm install
-npm run dev        # development server (one command)
+git clone https://github.com/AventurineDream/teachervibe.git
+cd teachervibe
+npm ci
+bash tools/install_hooks.sh
+npm run dev        # open the local URL printed by Vite
 ```
 
 ```sh
@@ -47,15 +56,21 @@ npm run build      # production build -> dist/ (one command)
 npm run preview    # serve the built app locally
 ```
 
-## Test
+## Commands
 
-```sh
-npm run test:unit       # Vitest: contracts, anchors, serialization, adapters
-npx playwright install chromium   # once
-npm run test:browser    # Playwright: real-browser reading, annotation, export flows
-```
+| Task | Command |
+| --- | --- |
+| Development | `npm run dev` |
+| Build | `npm run build` |
+| Format | `npm run format` (check: `npm run format:check`) |
+| Lint | Not configured |
+| Typecheck | `npx tsc --noEmit` (also part of build) |
+| Test (fast) | `npm run test:unit` |
+| Test (browser) | `npm run test:browser` |
+| Full gate | `npm run format:check && npm run build && npm run test:unit && npm run test:browser` |
+| Install staged-comment gate | `bash tools/install_hooks.sh` |
 
-CI (`.github/workflows/test.yml`) runs both on every push to `main` and every PR.
+Install Chromium once with `npx playwright install chromium` (Linux CI uses `--with-deps`). CI (`.github/workflows/test.yml`) retains unit/browser tests and also runs the existing production build/typecheck plus the [incremental comment gate](docs/decisions/0001-incremental-standard-adoption.md).
 
 ## Static hosting (lilbox)
 
@@ -71,23 +86,9 @@ No backend, no service worker, no environment config. Unauthenticated GitHub API
 access is rate-limited to 60 requests/hour per IP; the app surfaces that as a
 distinct state when it happens.
 
-## Forgejo <-> GitHub mirror workflow
+## Mirror workflow
 
-The self-hosted Forgejo instance (LAN-only, e.g. `http://10.0.0.108:3000`) is the
-working origin; GitHub is the canonical public mirror:
-
-```sh
-git clone <forgejo-ssh-url> teachervibe
-cd teachervibe
-git remote add github git@github.com:AventurineDream/teachervibe.git
-# day to day: push to origin (Forgejo)
-git push origin main
-# publish: mirror to GitHub
-git push github main
-```
-
-Forgejo repo creation stays a manual step on the instance (its web UI is LAN-only);
-GitHub pushes authenticate with the repo-scoped deploy key, not an account key.
+GitHub is the canonical public mirror. A self-hosted Forgejo instance can be the working origin; configure its URL locally rather than recording private network details in the repository. Repository creation on Forgejo remains a manual administrator step. Review work stays on feature branches and is submitted as PRs; do not mirror an unreviewed branch onto `main`.
 
 ## Reading, annotating, handing off
 
@@ -105,6 +106,24 @@ GitHub pushes authenticate with the repo-scoped deploy key, not an account key.
 The versioned schemas and their invariants (commit pinning, failed re-anchoring,
 deterministic export) live in `src/contracts/` and are documented in
 [docs/contracts.md](docs/contracts.md).
+
+## Layout
+
+- `src/contracts/`: annotation schema, hashing/re-anchoring, deterministic serialization.
+- `src/sources/`: GitHub, Forgejo, and local-folder snapshot adapters.
+- `src/store/`: session actions, in-memory state, and browser-local IndexedDB persistence.
+- `src/ui/`: read-only custom elements, navigation, annotation inspector, and review tray.
+- `tests/`: Vitest unit tests and Playwright browser flows.
+- `docs/`: architecture, contract invariants, and adoption decision.
+- `tools/`: committed lightweight development hooks.
+- `.github/`: the existing CI workflow.
+- `index.html`, `src/main.ts`, and `vite.config.ts`: static app bootstrap/build.
+
+## Documentation
+
+Start at the [documentation index](docs/README.md) and [architecture](docs/architecture.md); existing [contracts](docs/contracts.md) define revision pinning, anchoring, storage, and export invariants.
+
+Project planning lives in Aven's vault: [TeacherVibe](obsidian://open?vault=Home&file=10_Projects%2FShelved%2FTeacherVibe%2FTeacherVibe.md) (`10_Projects/Shelved/TeacherVibe/TeacherVibe.md`).
 
 ## License
 
