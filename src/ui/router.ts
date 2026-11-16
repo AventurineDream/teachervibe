@@ -10,6 +10,7 @@
 
 import { repoId, type RepositorySource } from '../contracts/schema.js';
 
+/** A restorable view. `commit` is null for local folders; `range` is a 1-based inclusive line range. */
 export interface Route {
   source: RepositorySource;
   commit: string | null;
@@ -20,6 +21,7 @@ export interface Route {
 const seg = encodeURIComponent;
 const un = decodeURIComponent;
 
+/** Serializes a Route to the hash formats in the file header; path segments are percent-encoded individually. */
 export function buildHash(route: Route): string {
   let base: string;
   const s = route.source;
@@ -39,6 +41,7 @@ export function buildHash(route: Route): string {
   return base;
 }
 
+/** Parses a hash produced by buildHash(); the leading `#` is optional. Returns null when it is empty or not a recognized route. */
 export function parseHash(hash: string): Route | null {
   const raw = hash.startsWith('#') ? hash.slice(1) : hash;
   if (!raw) return null;
@@ -55,7 +58,12 @@ export function parseHash(hash: string): Route | null {
     commit = parts[3] || null;
     rest = parts.slice(4);
   } else if (kind === 'fj' && parts.length >= 5) {
-    source = { kind: 'forgejo', baseUrl: parts[1]!, owner: parts[2]!, repo: parts[3]! };
+    source = {
+      kind: 'forgejo',
+      baseUrl: parts[1]!,
+      owner: parts[2]!,
+      repo: parts[3]!,
+    };
     commit = parts[4] || null;
     rest = parts.slice(5);
   } else if (kind === 'local' && parts.length >= 2) {

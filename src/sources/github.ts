@@ -6,13 +6,23 @@
  * `fetchFn` is injectable so unit tests run without a network.
  */
 
-import { repoId, type FileRecord, type GitHubSource, type RepositorySnapshot } from '../contracts/schema.js';
+import {
+  repoId,
+  type FileRecord,
+  type GitHubSource,
+  type RepositorySnapshot,
+} from '../contracts/schema.js';
 import { isBinaryPath, isGeneratedPath } from './classify.js';
-import { SourceError, type FetchFileResult, type SourceAdapter } from './types.js';
+import {
+  SourceError,
+  type FetchFileResult,
+  type SourceAdapter,
+} from './types.js';
 
 const API = 'https://api.github.com';
 const MAX_TEXT_BYTES = 1_000_000;
 
+/** Parsed switcher input: the source plus the ref a pasted /tree/<ref> URL pins. */
 export interface GitHubSpec extends GitHubSource {
   /** Optional branch/tag/SHA from a pasted /tree/<ref> URL. */
   ref?: string;
@@ -25,8 +35,11 @@ export interface GitHubSpec extends GitHubSource {
 export function parseGitHubSpec(input: string): GitHubSpec {
   const trimmed = input.trim().replace(/\/+$/, '');
   const short = trimmed.match(/^([\w.-]+)\/([\w.-]+)$/);
-  if (short) return { kind: 'github', owner: short[1]!, repo: stripGit(short[2]!) };
-  const url = trimmed.match(/^https?:\/\/(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?(?:\/tree\/(.+))?$/);
+  if (short)
+    return { kind: 'github', owner: short[1]!, repo: stripGit(short[2]!) };
+  const url = trimmed.match(
+    /^https?:\/\/(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?(?:\/tree\/(.+))?$/
+  );
   if (url) {
     const spec: GitHubSpec = { kind: 'github', owner: url[1]!, repo: url[2]! };
     if (url[3]) spec.ref = decodeURIComponent(url[3]);
@@ -41,25 +54,71 @@ function stripGit(repo: string): string {
 
 type FetchFn = typeof fetch;
 
-async function apiJson(fetchFn: FetchFn, url: string, what: string): Promise<unknown> {
+async function apiJson(
+  fetchFn: FetchFn,
+  url: string,
+  what: string
+): Promise<unknown> {
   let res: Response;
   try {
-    res = await fetchFn(url, { headers: { Accept: 'application/vnd.github+json' } });
+    res = await fetchFn(url, {
+      headers: { Accept: 'application/vnd.github+json' },
+    });
   } catch (err) {
-    throw new SourceError('network', `could not reach GitHub while loading ${what}: ${(err as Error).message}`);
+    throw new SourceError(
+      'network',
+      `could not reach GitHub while loading ${what}: ${(err as Error).message}`
+    );
   }
   if (res.ok) return res.json();
-  if (res.status === 404) throw new SourceError('not-found', `${what} not found (private repositories need a future authenticated adapter)`);
+  if (res.status === 404)
+    throw new SourceError(
+      'not-found',
+      `${what} not found (private repositories need a future authenticated adapter)`
+    );
   if (res.status === 403 && res.headers.get('x-ratelimit-remaining') === '0') {
     const reset = res.headers.get('x-ratelimit-reset');
-    const when = reset ? new Date(Number(reset) * 1000).toLocaleTimeString() : 'later';
-    throw new SourceError('rate-limited', `GitHub API rate limit reached; unauthenticated access resets at ${when}`);
+    const when = reset
+      ? new Date(Number(reset) * 1000).toLocaleTimeString()
+      : 'later';
+    throw new SourceError(
+      'rate-limited',
+      `GitHub API rate limit reached; unauthenticated access resets at ${when}`
+    );
   }
-  if (res.status === 401 || res.status === 403) throw new SourceError('inaccessible', `GitHub refused access to ${what} (HTTP ${res.status})`);
-  throw new SourceError('network', `GitHub returned HTTP ${res.status} for ${what}`);
+  if (res.status === 401 || res.status === 403)
+    throw new SourceError(
+      'inaccessible',
+      `GitHub refused access to ${what} (HTTP ${res.status})`
+    );
+  throw new SourceError(
+    'network',
+    `GitHub returned HTTP ${res.status} for ${what}`
+  );
 }
 
-export function createGitHubAdapter(fetchFn: FetchFn = fetch): SourceAdapter<GitHubSource> {
+/**
+ * Adapter for github.com over the unauthenticated REST API.
+ *
+ * open() makes three requests (two for a full 40-hex-digit SHA): repository info,
+ * branch head, recursive tree. Other refs use the branch endpoint, not tag or
+ * abbreviated-SHA resolution. The snapshot's defaultBranch is always the repository
+ * default, even when `ref` pins another branch; submodules are dropped, and the
+ * host's `truncated` flag is preserved without fetching more tree entries.
+ *
+ * fetchFile() makes one raw-content request at the pinned commit. Unlike open(), it
+ * reports a 401 or a non-rate-limit 403 as `network`, not `inaccessible`.
+ * open() reports 404 as `not-found`, exhausted-rate-limit 403 as `rate-limited`,
+ * other 401/403 as `inaccessible`, and other HTTP or request failures as `network`.
+ * Native response-body and malformed-payload errors are not wrapped.
+ *
+ * @param fetchFn - fetch implementation; unit tests inject a fake. Defaults to the
+ *   global fetch.
+ * @returns A lazy adapter; construction performs no network requests.
+ */
+export function createGitHubAdapter(
+  fetchFn: FetchFn = fetch
+): SourceAdapter<GitHubSource> {
   return {
     kind: 'github',
 
@@ -87,7 +146,15 @@ export function createGitHubAdapter(fetchFn: FetchFn = fetch): SourceAdapter<Git
         fetchFn,
         `${API}/repos/${source.owner}/${source.repo}/git/trees/${commit}?recursive=1`,
         `tree at ${commit.slice(0, 7)}`
-      )) as { tree: Array<{ path: string; type: string; size?: number; sha?: string }>; truncated?: boolean };
+      )) as {
+        tree: Array<{
+          path: string;
+          type: string;
+          size?: number;
+          sha?: string;
+        }>;
+        truncated?: boolean;
+      };
 
       const tree: FileRecord[] = treeInfo.tree
         .filter((e) => e.type === 'blob' || e.type === 'tree')
@@ -97,7 +164,7 @@ export function createGitHubAdapter(fetchFn: FetchFn = fetch): SourceAdapter<Git
           ...(e.size !== undefined ? { size: e.size } : {}),
           ...(e.sha ? { sha: e.sha } : {}),
           binary: e.type === 'blob' && isBinaryPath(e.path),
-          generated: isGeneratedPath(e.path)
+          generated: isGeneratedPath(e.path),
         }))
         .sort((a, b) => a.path.localeCompare(b.path));
 
@@ -107,28 +174,51 @@ export function createGitHubAdapter(fetchFn: FetchFn = fetch): SourceAdapter<Git
         defaultBranch: repoInfo.default_branch,
         commit,
         tree,
-        truncated: Boolean(treeInfo.truncated)
+        truncated: Boolean(treeInfo.truncated),
       };
     },
 
     async fetchFile(snapshot, record) {
-      if (record.type !== 'blob') return { kind: 'unsupported', reason: 'not a file' };
+      if (record.type !== 'blob')
+        return { kind: 'unsupported', reason: 'not a file' };
       if (record.binary) return { kind: 'binary' };
       if (record.size !== undefined && record.size > MAX_TEXT_BYTES) {
-        return { kind: 'unsupported', reason: `file is ${(record.size / 1_000_000).toFixed(1)} MB; text preview limit is 1 MB` };
+        return {
+          kind: 'unsupported',
+          reason: `file is ${(record.size / 1_000_000).toFixed(1)} MB; text preview limit is 1 MB`,
+        };
       }
       const url = `${API}/repos/${snapshot.repoId.slice('github:'.length)}/contents/${record.path.split('/').map(encodeURIComponent).join('/')}?ref=${snapshot.commit}`;
       let res: Response;
       try {
-        res = await fetchFn(url, { headers: { Accept: 'application/vnd.github.raw' } });
+        res = await fetchFn(url, {
+          headers: { Accept: 'application/vnd.github.raw' },
+        });
       } catch (err) {
-        throw new SourceError('network', `could not reach GitHub while loading ${record.path}: ${(err as Error).message}`);
+        throw new SourceError(
+          'network',
+          `could not reach GitHub while loading ${record.path}: ${(err as Error).message}`
+        );
       }
-      if (res.status === 404) throw new SourceError('not-found', `${record.path} not found at this commit`);
-      if (res.status === 403 && res.headers.get('x-ratelimit-remaining') === '0') {
-        throw new SourceError('rate-limited', 'GitHub API rate limit reached while loading the file');
+      if (res.status === 404)
+        throw new SourceError(
+          'not-found',
+          `${record.path} not found at this commit`
+        );
+      if (
+        res.status === 403 &&
+        res.headers.get('x-ratelimit-remaining') === '0'
+      ) {
+        throw new SourceError(
+          'rate-limited',
+          'GitHub API rate limit reached while loading the file'
+        );
       }
-      if (!res.ok) throw new SourceError('network', `GitHub returned HTTP ${res.status} for ${record.path}`);
+      if (!res.ok)
+        throw new SourceError(
+          'network',
+          `GitHub returned HTTP ${res.status} for ${record.path}`
+        );
       return { kind: 'text', text: await res.text() };
     },
 
@@ -138,6 +228,6 @@ export function createGitHubAdapter(fetchFn: FetchFn = fetch): SourceAdapter<Git
       let url = `${base}/blob/${snapshot.commit}/${path}`;
       if (range) url += `#L${range.start}-L${range.end}`;
       return url;
-    }
+    },
   };
 }

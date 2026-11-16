@@ -13,7 +13,9 @@ test('rails collapse into drawers at phone width', async ({ page }) => {
   await expect(page.locator('reader-app')).not.toHaveClass(/drawer-nav/);
   await page.locator('[data-action="drawer-nav"]').click();
   await expect(page.locator('reader-app')).toHaveClass(/drawer-nav/);
-  await page.locator('reader-nav [data-nav="file"][data-path="src/app.ts"]').click();
+  await page
+    .locator('reader-nav [data-nav="file"][data-path="src/app.ts"]')
+    .click();
   await expect(page.locator('.crumb')).toHaveText('src/app.ts');
   // drawer closed after navigation
   await expect(page.locator('reader-app')).not.toHaveClass(/drawer-nav/);

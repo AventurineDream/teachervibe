@@ -8,11 +8,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check added source reminder ownership
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: bash tools/hooks/pre-commit --base "$BASE_SHA"
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run format:check
+      - run: npm run build
       - run: npm run test:unit
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser

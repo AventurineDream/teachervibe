@@ -7,6 +7,6 @@ export default defineConfig({
   build: { outDir: 'dist', sourcemap: true },
   test: {
     include: ['tests/unit/**/*.test.ts'],
-    environment: 'node'
-  }
+    environment: 'node',
+  },
 });

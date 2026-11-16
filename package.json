@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "prismjs": "^1.30.0"
@@ -20,6 +22,7 @@
     "@playwright/test": "^1.55.0",
     "@types/node": "^26.6.2",
     "@types/prismjs": "^1.26.5",
+    "prettier": "3.9.10",
     "typescript": "~5.9.2",
     "vite": "^7.1.0",
     "vitest": "^3.2.4"

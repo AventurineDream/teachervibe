@@ -2,19 +2,37 @@
  * <reader-inspector> - write and manage the selected annotation, browse the
  * annotations on the open file, and see the full anchor identity for each.
  * Also owns type/status filters and the moved/stale-anchor states.
+ * connect() consumes App.store and delegates edits to App's IndexedDB-backed actions;
+ * rendering avoids replacing focused form fields.
  */
 
-import { ANNOTATION_STATUSES, ANNOTATION_TYPES, type Annotation } from '../contracts/schema.js';
+import {
+  ANNOTATION_STATUSES,
+  ANNOTATION_TYPES,
+  type Annotation,
+} from '../contracts/schema.js';
 import type { App } from '../store/actions.js';
 import type { AppState } from '../store/state.js';
 import { escapeHtml, renderUnlessFocused, copyText, shortSha } from './dom.js';
 import { buildHash } from './router.js';
 
+/**
+ * The `<reader-inspector>` panel. Edits persist as they happen: type and status on
+ * change, the body when its textarea loses focus; delete is immediate, without
+ * confirmation. State chips compare the anchor's commit with the viewed one (`stale
+ * revision`) and re-resolve it against the open text (`relocated`, `moved`).
+ */
 export class ReaderInspector extends HTMLElement {
   private app: App | null = null;
   private unsubscribe: (() => void) | null = null;
   private resolutions = new Map<string, string>(); // annotation id -> human state label
 
+  /**
+   * Binds the inspector to `app`: renders on every store change (nothing is drawn
+   * before the first one) and routes its buttons and fields to App actions. Call
+   * once: listeners are never removed.
+   * @param app - Page controller supplying annotation state and persistence actions.
+   */
   connect(app: App): void {
     this.app = app;
     this.unsubscribe?.();
@@ -26,11 +44,15 @@ export class ReaderInspector extends HTMLElement {
       if (action === 'save-draft') void this.saveDraft();
       else if (action === 'cancel-draft') this.app.setInspectorTarget(null);
       else if (action === 'open') this.app.openAnnotation(el.dataset['id']!);
-      else if (action === 'delete') void this.app.removeAnnotation(el.dataset['id']!);
+      else if (action === 'delete')
+        void this.app.removeAnnotation(el.dataset['id']!);
       else if (action === 'tray-add') this.app.trayAdd(el.dataset['id']!);
-      else if (action === 'copy-anchor-link') void this.copyAnchorLink(el.dataset['id']!);
-      else if (action === 'filter-type') this.app.toggleTypeFilter(el.dataset['value']!);
-      else if (action === 'filter-status') this.app.toggleStatusFilter(el.dataset['value']!);
+      else if (action === 'copy-anchor-link')
+        void this.copyAnchorLink(el.dataset['id']!);
+      else if (action === 'filter-type')
+        this.app.toggleTypeFilter(el.dataset['value']!);
+      else if (action === 'filter-status')
+        this.app.toggleStatusFilter(el.dataset['value']!);
       else if (action === 'close') this.app.setInspectorTarget(null);
     });
     this.addEventListener('change', (e) => {
@@ -38,23 +60,35 @@ export class ReaderInspector extends HTMLElement {
       if (!this.app) return;
       const id = el.closest<HTMLElement>('[data-id]')?.dataset['id'];
       if (!id) return;
-      if (el.matches('select[data-field="type"]')) void this.app.updateAnnotation(id, { type: (el as HTMLSelectElement).value as Annotation['type'] });
-      if (el.matches('select[data-field="status"]')) void this.app.updateAnnotation(id, { status: (el as HTMLSelectElement).value as Annotation['status'] });
+      if (el.matches('select[data-field="type"]'))
+        void this.app.updateAnnotation(id, {
+          type: (el as HTMLSelectElement).value as Annotation['type'],
+        });
+      if (el.matches('select[data-field="status"]'))
+        void this.app.updateAnnotation(id, {
+          status: (el as HTMLSelectElement).value as Annotation['status'],
+        });
     });
     this.addEventListener('focusout', (e) => {
       const el = e.target as HTMLElement;
       if (!this.app || !el.matches('textarea[data-field="body"]')) return;
       const id = el.closest<HTMLElement>('[data-id]')?.dataset['id'];
       if (!id) return;
-      const existing = this.app.store.get().annotations.find((a) => a.id === id);
+      const existing = this.app.store
+        .get()
+        .annotations.find((a) => a.id === id);
       const value = (el as HTMLTextAreaElement).value;
-      if (existing && existing.body !== value) void this.app.updateAnnotation(id, { body: value });
+      if (existing && existing.body !== value)
+        void this.app.updateAnnotation(id, { body: value });
     });
   }
 
   private async saveDraft(): Promise<void> {
-    const type = this.querySelector<HTMLSelectElement>('[data-draft="type"]')!.value as Annotation['type'];
-    const body = this.querySelector<HTMLTextAreaElement>('[data-draft="body"]')!.value;
+    const type = this.querySelector<HTMLSelectElement>('[data-draft="type"]')!
+      .value as Annotation['type'];
+    const body = this.querySelector<HTMLTextAreaElement>(
+      '[data-draft="body"]'
+    )!.value;
     await this.app!.saveDraft(type, body);
   }
 
@@ -66,7 +100,7 @@ export class ReaderInspector extends HTMLElement {
       source: state.snapshot.source,
       commit: a.anchor.commit,
       path: a.anchor.path,
-      range: { start: a.anchor.start.line, end: a.anchor.end.line }
+      range: { start: a.anchor.start.line, end: a.anchor.end.line },
     });
     const ok = await copyText(`${location.origin}${location.pathname}${hash}`);
     this.app!.setStatus(ok ? 'Anchor link copied.' : 'Copy failed.');
@@ -78,10 +112,13 @@ export class ReaderInspector extends HTMLElement {
     const next = new Map<string, string>();
     for (const [id, r] of res) {
       if (r.state === 'exact') next.set(id, 'exact');
-      else if (r.state === 'relocated') next.set(id, `relocated to L${r.start.line}-L${r.end.line}`);
+      else if (r.state === 'relocated')
+        next.set(id, `relocated to L${r.start.line}-L${r.end.line}`);
       else next.set(id, `moved - ${r.reason}`);
     }
-    const changed = next.size !== this.resolutions.size || [...next].some(([k, v]) => this.resolutions.get(k) !== v);
+    const changed =
+      next.size !== this.resolutions.size ||
+      [...next].some(([k, v]) => this.resolutions.get(k) !== v);
     this.resolutions = next;
     if (changed) this.render(this.app.store.get());
   }
@@ -116,11 +153,16 @@ export class ReaderInspector extends HTMLElement {
       : [];
 
     const list = fileAnnotations.length
-      ? fileAnnotations.map((a) => this.renderAnnotation(state, a, false)).join('')
+      ? fileAnnotations
+          .map((a) => this.renderAnnotation(state, a, false))
+          .join('')
       : `<div class="inspector-empty">No annotations on this file yet. Select lines, then "annotate".</div>`;
 
     this.classList.toggle('drafting', state.inspectorTarget === 'draft');
-    renderUnlessFocused(this, `${filters}${target}<h3 class="list-head">On this file (${fileAnnotations.length})</h3>${list}`);
+    renderUnlessFocused(
+      this,
+      `${filters}${target}<h3 class="list-head">On this file (${fileAnnotations.length})</h3>${list}`
+    );
   }
 
   private renderDraft(state: AppState): string {
@@ -136,15 +178,27 @@ export class ReaderInspector extends HTMLElement {
     </div>`;
   }
 
-  private renderAnnotation(state: AppState, a: Annotation, expanded: boolean): string {
+  private renderAnnotation(
+    state: AppState,
+    a: Annotation,
+    expanded: boolean
+  ): string {
     const inTray = state.tray.includes(a.id);
     const stale = a.anchor.commit !== state.snapshot!.commit;
     const resolution = this.resolutions.get(a.id);
     const stateChips = [
-      stale ? `<span class="chip warn" title="Created at ${shortSha(a.anchor.commit)}, viewing ${shortSha(state.snapshot!.commit)}">stale revision</span>` : '',
-      resolution && resolution !== 'exact' ? `<span class="chip ${resolution.startsWith('moved') ? 'bad' : 'warn'}">${escapeHtml(resolution)}</span>` : ''
+      stale
+        ? `<span class="chip warn" title="Created at ${shortSha(a.anchor.commit)}, viewing ${shortSha(state.snapshot!.commit)}">stale revision</span>`
+        : '',
+      resolution && resolution !== 'exact'
+        ? `<span class="chip ${resolution.startsWith('moved') ? 'bad' : 'warn'}">${escapeHtml(resolution)}</span>`
+        : '',
     ].join('');
-    const quote = a.quote.split('\n').slice(0, expanded ? 100 : 4).map((q) => `> ${q}`).join('\n');
+    const quote = a.quote
+      .split('\n')
+      .slice(0, expanded ? 100 : 4)
+      .map((q) => `> ${q}`)
+      .join('\n');
     return `<div class="card ${expanded ? 'expanded' : ''}" data-id="${a.id}">
       <div class="card-head">
         <span class="type-tag type-${a.type}">${a.type}</span>
@@ -180,6 +234,7 @@ export class ReaderInspector extends HTMLElement {
   }
 }
 
+/** Registers `<reader-inspector>`. Call once per page: customElements.define() throws on a repeat. */
 export function defineInspector(): void {
   customElements.define('reader-inspector', ReaderInspector);
 }

@@ -2,17 +2,29 @@
  * <reader-tray> - the handoff set. Order notes, attach a target ref, preview the
  * packet, export deterministic Markdown + JSON. The packet is the product's
  * reason to exist: precise context an agent can act on without guessing.
+ * connect() consumes App.store; App.packet() builds artifacts for clipboard and
+ * browser-download actions. Tray order is session state, not persisted storage.
  */
 
 import type { App } from '../store/actions.js';
 import type { AppState } from '../store/state.js';
 import { escapeHtml, renderUnlessFocused, download, copyText } from './dom.js';
 
+/**
+ * The `<reader-tray>` element. Every copy, download and preview rebuilds the packet
+ * through App.packet(), so it always follows the tray's current order.
+ */
 export class ReaderTray extends HTMLElement {
   private app: App | null = null;
   private unsubscribe: (() => void) | null = null;
   private showPreview = false;
 
+  /**
+   * Binds the tray to `app`: renders on every store change (nothing is drawn before
+   * the first one) and routes its reorder, remove, open, preview, copy and download
+   * buttons. Call once: the click listener is never removed.
+   * @param app - Page controller supplying the ordered tray and packet generation.
+   */
   connect(app: App): void {
     this.app = app;
     this.unsubscribe?.();
@@ -33,23 +45,45 @@ export class ReaderTray extends HTMLElement {
         const packet = this.app?.packet(this.targetRef());
         if (packet)
           void copyText(packet.prompt).then((ok) =>
-            this.app?.setStatus(ok ? 'Prompt copied - paste it straight into your coding agent.' : 'Copy failed.')
+            this.app?.setStatus(
+              ok
+                ? 'Prompt copied - paste it straight into your coding agent.'
+                : 'Copy failed.'
+            )
           );
       } else if (action === 'export-md') {
         const packet = this.app.packet(this.targetRef());
-        if (packet) download('review-packet.md', packet.markdown, 'text/markdown');
+        if (packet)
+          download('review-packet.md', packet.markdown, 'text/markdown');
       } else if (action === 'export-json') {
         const packet = this.app.packet(this.targetRef());
-        if (packet) download('review-packet.json', packet.json, 'application/json');
+        if (packet)
+          download('review-packet.json', packet.json, 'application/json');
       } else if (action === 'copy-md') {
         const packet = this.app.packet(this.targetRef());
-        if (packet) void copyText(packet.markdown).then((ok) => this.app?.setStatus(ok ? 'Packet Markdown copied - paste it into an agent conversation.' : 'Copy failed.'));
+        if (packet)
+          void copyText(packet.markdown).then((ok) =>
+            this.app?.setStatus(
+              ok
+                ? 'Packet Markdown copied - paste it into an agent conversation.'
+                : 'Copy failed.'
+            )
+          );
       }
     });
   }
 
+  /**
+   * Trimmed value of the target-ref input, or ''. NOTE: the value lives only in that
+   * input, not in the Store, and a re-render while focus is outside the tray's inputs
+   * recreates it empty. Copying (which sets the status line) and toggling the preview
+   * both re-render.
+   */
   private targetRef(): string {
-    return this.querySelector<HTMLInputElement>('[data-target-ref]')?.value.trim() ?? '';
+    return (
+      this.querySelector<HTMLInputElement>('[data-target-ref]')?.value.trim() ??
+      ''
+    );
   }
 
   private render(state: AppState): void {
@@ -72,8 +106,14 @@ export class ReaderTray extends HTMLElement {
       })
       .join('');
 
-    const packet = state.tray.length && state.snapshot ? this.app!.packet(this.targetRef()) : null;
-    const preview = this.showPreview && packet ? `<pre class="packet-preview">${escapeHtml(packet.markdown)}</pre>` : '';
+    const packet =
+      state.tray.length && state.snapshot
+        ? this.app!.packet(this.targetRef())
+        : null;
+    const preview =
+      this.showPreview && packet
+        ? `<pre class="packet-preview">${escapeHtml(packet.markdown)}</pre>`
+        : '';
 
     renderUnlessFocused(
       this,
@@ -96,6 +136,7 @@ export class ReaderTray extends HTMLElement {
   }
 }
 
+/** Registers `<reader-tray>`. Call once per page: customElements.define() throws on a repeat. */
 export function defineTray(): void {
   customElements.define('reader-tray', ReaderTray);
 }

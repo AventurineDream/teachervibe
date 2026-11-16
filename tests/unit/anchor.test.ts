@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createAnchor, lineRange, resolveAnchor, selectedText, sha256Hex } from '../../src/contracts/anchor.js';
+import {
+  createAnchor,
+  lineRange,
+  resolveAnchor,
+  selectedText,
+  sha256Hex,
+} from '../../src/contracts/anchor.js';
 
 const FILE = ['one', 'two', 'three', 'four', 'five', 'six', 'seven'].join('\n');
 
@@ -9,7 +15,9 @@ describe('selectedText', () => {
     expect(selectedText(FILE, start, end)).toBe('two\nthree\nfour');
   });
   it('extracts column-precise ranges', () => {
-    expect(selectedText(FILE, { line: 1, column: 2 }, { line: 1, column: 4 })).toBe('ne');
+    expect(
+      selectedText(FILE, { line: 1, column: 2 }, { line: 1, column: 4 })
+    ).toBe('ne');
   });
   it('rejects out-of-bounds ranges', () => {
     expect(() => lineRange(0, 3, FILE)).toThrow(RangeError);
@@ -21,7 +29,14 @@ describe('selectedText', () => {
 describe('createAnchor', () => {
   it('captures the hash and 2-line context windows', async () => {
     const { start, end } = lineRange(3, 4, FILE);
-    const { anchor, quote } = await createAnchor({ repoId: 'github:o/r', commit: 'a'.repeat(40), path: 'f.txt', start, end, fileText: FILE });
+    const { anchor, quote } = await createAnchor({
+      repoId: 'github:o/r',
+      commit: 'a'.repeat(40),
+      path: 'f.txt',
+      start,
+      end,
+      fileText: FILE,
+    });
     expect(quote).toBe('three\nfour');
     expect(anchor.textHash).toBe(await sha256Hex('three\nfour'));
     expect(anchor.contextBefore).toBe('one\ntwo');
@@ -29,7 +44,14 @@ describe('createAnchor', () => {
   });
   it('clips context at file edges', async () => {
     const { start, end } = lineRange(1, 1, FILE);
-    const { anchor } = await createAnchor({ repoId: 'github:o/r', commit: null, path: 'f.txt', start, end, fileText: FILE });
+    const { anchor } = await createAnchor({
+      repoId: 'github:o/r',
+      commit: null,
+      path: 'f.txt',
+      start,
+      end,
+      fileText: FILE,
+    });
     expect(anchor.contextBefore).toBe('');
     expect(anchor.contextAfter).toBe('two\nthree');
   });
@@ -38,7 +60,14 @@ describe('createAnchor', () => {
 describe('resolveAnchor', () => {
   async function anchorOn(file: string, a: number, b: number) {
     const { start, end } = lineRange(a, b, file);
-    return createAnchor({ repoId: 'github:o/r', commit: 'c'.repeat(40), path: 'f.txt', start, end, fileText: file });
+    return createAnchor({
+      repoId: 'github:o/r',
+      commit: 'c'.repeat(40),
+      path: 'f.txt',
+      start,
+      end,
+      fileText: file,
+    });
   }
 
   it('resolves exact when the range is untouched', async () => {
@@ -50,7 +79,16 @@ describe('resolveAnchor', () => {
 
   it('relocates when the block shifted', async () => {
     const { anchor, quote } = await anchorOn(FILE, 3, 4);
-    const moved = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'].join('\n');
+    const moved = [
+      'zero',
+      'one',
+      'two',
+      'three',
+      'four',
+      'five',
+      'six',
+      'seven',
+    ].join('\n');
     const res = await resolveAnchor(anchor, quote, moved);
     expect(res.state).toBe('relocated');
     if (res.state === 'relocated') {
@@ -61,7 +99,11 @@ describe('resolveAnchor', () => {
 
   it('reports moved when the text is gone', async () => {
     const { anchor, quote } = await anchorOn(FILE, 3, 4);
-    const res = await resolveAnchor(anchor, quote, 'completely\ndifferent\nfile');
+    const res = await resolveAnchor(
+      anchor,
+      quote,
+      'completely\ndifferent\nfile'
+    );
     expect(res.state).toBe('moved');
   });
 
@@ -80,18 +122,61 @@ describe('resolveAnchor', () => {
   });
 
   it('relocates when the quote survives at exactly one new position', async () => {
-    const base = ['head', 'ctx-a', 'ctx-b', 'target-a', 'target-b', 'tail-a', 'tail-b', 'target-a', 'target-b', 'other'].join('\n');
+    const base = [
+      'head',
+      'ctx-a',
+      'ctx-b',
+      'target-a',
+      'target-b',
+      'tail-a',
+      'tail-b',
+      'target-a',
+      'target-b',
+      'other',
+    ].join('\n');
     const { anchor, quote } = await anchorOn(base, 3, 4); // quote 'ctx-b\ntarget-a'
-    const changed = ['head', 'gone', 'ctx-a', 'ctx-b', 'target-a', 'tail-a', 'tail-b', 'target-a', 'x'].join('\n');
+    const changed = [
+      'head',
+      'gone',
+      'ctx-a',
+      'ctx-b',
+      'target-a',
+      'tail-a',
+      'tail-b',
+      'target-a',
+      'x',
+    ].join('\n');
     const res = await resolveAnchor(anchor, quote, changed);
     expect(res.state).toBe('relocated');
     if (res.state === 'relocated') expect(res.start.line).toBe(4);
   });
 
   it('relocates via context windows when the quote appears twice', async () => {
-    const base = ['pre1', 'pre2', 'A', 'B', 'post1', 'post2', 'x', 'A', 'B', 'z'].join('\n');
+    const base = [
+      'pre1',
+      'pre2',
+      'A',
+      'B',
+      'post1',
+      'post2',
+      'x',
+      'A',
+      'B',
+      'z',
+    ].join('\n');
     const { anchor, quote } = await anchorOn(base, 3, 4); // quote 'A\nB'
-    const changed = ['shift', 'pre1', 'pre2', 'A', 'B', 'post1', 'post2', 'A', 'B', 'z'].join('\n');
+    const changed = [
+      'shift',
+      'pre1',
+      'pre2',
+      'A',
+      'B',
+      'post1',
+      'post2',
+      'A',
+      'B',
+      'z',
+    ].join('\n');
     const res = await resolveAnchor(anchor, quote, changed);
     expect(res.state).toBe('relocated');
     if (res.state === 'relocated') {
