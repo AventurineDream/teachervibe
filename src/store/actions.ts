@@ -393,6 +393,27 @@ export class App {
       selection: null,
       searchQuery: '',
     });
+    // Keep the URL in sync with the view during the load: navigate now so
+    // the hash reflects the new file before the async fetch completes.
+    // The navigate() after the fetch becomes a no-op (hash already current).
+    if (opts.updateHash) {
+      this.navigate({
+        source: snapshot.source,
+        commit: snapshot.commit,
+        path,
+        range,
+      });
+      void kvSet(
+        this.db,
+        'lastRoute',
+        buildHash({
+          source: snapshot.source,
+          commit: snapshot.commit,
+          path,
+          range,
+        })
+      );
+    }
     const adapter = this.adapterFor(snapshot);
     const seq = this.navSeq;
     try {

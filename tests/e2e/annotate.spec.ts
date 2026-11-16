@@ -115,6 +115,9 @@ test('clicking a line or marker does not jump the reading position', async ({
   page,
 }) => {
   await openFixtureFile(page, 'long.md');
+  // Wait for the content to render before setting scrollTop; otherwise the
+  // baseline reads 0 because the scroll container has no height yet.
+  await expect(page.locator('[data-line="180"]')).toBeVisible();
   const scroll = page.locator('.code-scroll');
   await scroll.evaluate((el) => {
     el.scrollTop = 1300;
