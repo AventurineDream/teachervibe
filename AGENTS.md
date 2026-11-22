@@ -16,11 +16,11 @@ bash tools/install_hooks.sh
 | Task | Command |
 |---|---|
 | Format | `npm run format` (check: `npm run format:check`) |
-| Lint | none |
+| Lint | `npm run lint` (ESLint flat config, recommended rules; no type-aware rules) |
 | Typecheck | `npx tsc --noEmit` (also run by `npm run build`) |
 | Test (fast) | `npm run test:unit` |
 | Test (full / slow) | `npx playwright install chromium` once, then `npm run test:browser` |
-| Full gate (run before handoff) | `npm run format:check && npm run build && npm run test:unit && npm run test:browser` |
+| Full gate (run before handoff) | `npm run format:check && npm run lint && npm run build && npm run test:unit && npm run test:browser` |
 | Install staged-comment gate | `bash tools/install_hooks.sh` |
 
 ## Definition of done

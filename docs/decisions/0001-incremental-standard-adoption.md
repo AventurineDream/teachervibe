@@ -20,3 +20,7 @@ Keep the existing Vitest and Playwright checks, and run the existing production 
 - The already-adopted `npm run format:check` runs in the documented full gate and existing CI, respecting the committed `.prettierignore`. This metadata change neither widens that scope nor reformats legacy files.
 - Preserve existing licenses. Where no license has been chosen, the default is all rights reserved; adoption is not permission to relicense.
 - Existing design and operational documents stay in place and are indexed, rather than creating empty plans/runbook folders or duplicating content.
+
+## Amendment (2026-11-21)
+
+Aven asked for ESLint and a lint step in CI, so `eslint.config.js` (recommended rules only) and `npm run lint` now run after the format check in CI. This supersedes the "No ESLint gate" sentence above; the other deferrals (type-aware rules, JSDoc and line-length rules) still stand.
