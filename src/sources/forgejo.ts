@@ -11,12 +11,10 @@ import {
   repoId,
   type FileRecord,
   type ForgejoSource,
-  type RepositorySnapshot,
 } from '../contracts/schema.js';
 import { isBinaryPath, isGeneratedPath } from './classify.js';
 import {
   SourceError,
-  type FetchFileResult,
   type SourceAdapter,
 } from './types.js';
 

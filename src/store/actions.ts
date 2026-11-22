@@ -27,7 +27,6 @@ import {
 } from '../contracts/serialize.js';
 import {
   ANNOTATION_SCHEMA_VERSION,
-  repoId,
   type Annotation,
   type AnnotationType,
   type FileRecord,
