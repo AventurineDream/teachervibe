@@ -11,14 +11,9 @@ import {
   repoId,
   type FileRecord,
   type ForgejoSource,
-  type RepositorySnapshot,
 } from '../contracts/schema.js';
 import { isBinaryPath, isGeneratedPath } from './classify.js';
-import {
-  SourceError,
-  type FetchFileResult,
-  type SourceAdapter,
-} from './types.js';
+import { SourceError, type SourceAdapter } from './types.js';
 
 const MAX_TEXT_BYTES = 1_000_000;
 

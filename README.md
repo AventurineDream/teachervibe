@@ -63,11 +63,11 @@ npm run preview    # serve the built app locally
 | Development | `npm run dev` |
 | Build | `npm run build` |
 | Format | `npm run format` (check: `npm run format:check`) |
-| Lint | Not configured |
+| Lint | `npm run lint` (ESLint flat config, recommended rules) |
 | Typecheck | `npx tsc --noEmit` (also part of build) |
 | Test (fast) | `npm run test:unit` |
 | Test (browser) | `npm run test:browser` |
-| Full gate | `npm run format:check && npm run build && npm run test:unit && npm run test:browser` |
+| Full gate | `npm run format:check && npm run lint && npm run build && npm run test:unit && npm run test:browser` |
 | Install staged-comment gate | `bash tools/install_hooks.sh` |
 
 Install Chromium once with `npx playwright install chromium` (Linux CI uses `--with-deps`). CI (`.github/workflows/test.yml`) retains unit/browser tests and also runs the existing production build/typecheck plus the [incremental comment gate](docs/decisions/0001-incremental-standard-adoption.md).
